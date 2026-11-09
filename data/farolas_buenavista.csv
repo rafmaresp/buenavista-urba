@@ -1,0 +1,138 @@
+farola,calle,lat,lon,posicion
+1,C. M (paralela A-8032),37.3186864,-5.9614540,verificada
+2,C. M (paralela A-8032),37.3184329,-5.9617754,estimada
+3,C. M (paralela A-8032),37.3181375,-5.9620907,verificada
+4,C. M (paralela A-8032),37.3178323,-5.9625769,estimada
+5,C. M (paralela A-8032),37.3173632,-5.9625627,estimada
+6,C. M (paralela A-8032),37.3170108,-5.9624954,estimada
+7,C. M (paralela A-8032),37.3166202,-5.9624717,verificada
+8,C. M (paralela A-8032),37.3162135,-5.9624605,verificada
+9,C. M (paralela A-8032),37.3158694,-5.9624599,estimada
+10,C. M (paralela A-8032),37.3153813,-5.9624363,estimada
+11,C. M (paralela A-8032),37.3151320,-5.9622965,estimada
+12,C. M (paralela A-8032),37.3146372,-5.9623175,estimada
+13,C. M (paralela A-8032),37.3143583,-5.9619842,estimada
+14,C. M (paralela A-8032),37.3140317,-5.9616550,estimada
+15,C. M (paralela A-8032),37.3136521,-5.9613908,verificada
+16,C. M (paralela A-8032),37.3137089,-5.9612346,verificada
+17,C. Buenavista,37.3138648,-5.9608466,verificada
+18,C. Buenavista,37.3140371,-5.9604217,verificada
+19,C. Buenavista,37.3142231,-5.9599348,verificada
+20,C. Buenavista,37.3144153,-5.9594344,estimada
+21,C. Buenavista,37.3146052,-5.9589837,estimada
+22,C. Buenavista,37.3148025,-5.9585879,estimada
+23,C. Buenavista,37.3149022,-5.9582914,estimada
+24,C. Buenavista,37.3150514,-5.9579264,estimada
+25,C. O (exterior),37.3151806,-5.9575111,verificada
+26,C. O (exterior),37.3155412,-5.9575560,estimada
+27,C. O (exterior),37.3159766,-5.9576665,verificada
+28,C. O (exterior),37.3163948,-5.9577788,verificada
+29,C. O (exterior),37.3167851,-5.9579504,estimada
+30,C. O (exterior),37.3171215,-5.9580716,verificada
+31,C. O (exterior),37.3174385,-5.9582780,estimada
+32,C. O (exterior),37.3177680,-5.9585001,estimada
+33,C. O (exterior),37.3180725,-5.9587329,estimada
+34,C. O (exterior),37.3183511,-5.9589546,estimada
+35,C. O (exterior),37.3187720,-5.9592379,estimada
+36,C. O (exterior),37.3191105,-5.9594880,estimada
+37,C. M norte,37.3189849,-5.9603030,estimada
+38,C. M norte,37.3188874,-5.9607371,estimada
+39,C. M norte,37.3188012,-5.9610640,estimada
+40,C. M norte,37.3186225,-5.9611712,estimada
+41,C. L,37.3182879,-5.9609683,estimada
+42,C. L,37.3179567,-5.9607480,estimada
+43,C. L,37.3176904,-5.9605807,estimada
+44,C. L,37.3172748,-5.9602152,estimada
+45,C. L,37.3168805,-5.9600475,estimada
+46,C. L,37.3166152,-5.9598973,estimada
+47,C. L,37.3164033,-5.9596341,estimada
+48,C. L,37.3161023,-5.9595079,estimada
+49,C. L,37.3158018,-5.9592400,estimada
+50,C. L,37.3154444,-5.9591032,estimada
+51,C. L,37.3150657,-5.9588546,estimada
+52,C. H,37.3169672,-5.9584361,verificada
+53,C. H,37.3168861,-5.9587537,estimada
+54,C. H,37.3167686,-5.9590413,estimada
+55,C. H,37.3165384,-5.9595029,estimada
+56,C. H,37.3163130,-5.9599439,estimada
+57,C. H,37.3162071,-5.9602380,estimada
+58,C. H,37.3159940,-5.9608101,estimada
+59,C. H,37.3157812,-5.9612628,estimada
+60,C. H,37.3156371,-5.9617066,estimada
+61,C. H,37.3154682,-5.9621701,estimada
+63,C. Q / C. R,37.3154888,-5.9613504,estimada
+64,C. Q / C. R,37.3151631,-5.9613212,estimada
+65,C. Q / C. R,37.3149055,-5.9609870,estimada
+66,C. Q / C. R,37.3150858,-5.9606253,estimada
+67,C. Q / C. R,37.3152319,-5.9602363,estimada
+68,C. Q / C. R,37.3153393,-5.9599476,estimada
+69,C. Q / C. R,37.3151333,-5.9596763,estimada
+70,C. Q / C. R,37.3148052,-5.9594514,estimada
+
+calle,desde,hasta,distancia_m
+C. M (paralela A-8032),1,2,40.0
+C. M (paralela A-8032),2,3,43.0
+C. M (paralela A-8032),3,4,54.8
+C. M (paralela A-8032),4,5,52.1
+C. M (paralela A-8032),5,6,39.6
+C. M (paralela A-8032),6,7,43.4
+C. M (paralela A-8032),7,8,45.1
+C. M (paralela A-8032),8,9,38.2
+C. M (paralela A-8032),9,10,54.2
+C. M (paralela A-8032),10,11,30.3
+C. M (paralela A-8032),11,12,54.9
+C. M (paralela A-8032),12,13,42.8
+C. M (paralela A-8032),13,14,46.5
+C. M (paralela A-8032),14,15,48.2
+C. M (paralela A-8032),15,16,15.2
+C. Buenavista,16,17,38.5
+C. Buenavista,17,18,42.2
+C. Buenavista,18,19,47.8
+C. Buenavista,19,20,49.2
+C. Buenavista,20,21,45.1
+C. Buenavista,21,22,41.3
+C. Buenavista,22,23,28.5
+C. Buenavista,23,24,36.3
+C. O (exterior),24,25,39.5
+C. O (exterior),25,26,40.2
+C. O (exterior),26,27,49.3
+C. O (exterior),27,28,47.4
+C. O (exterior),28,29,45.9
+C. O (exterior),29,30,38.8
+C. O (exterior),30,31,39.6
+C. O (exterior),31,32,41.5
+C. O (exterior),32,33,39.6
+C. O (exterior),33,34,36.6
+C. O (exterior),34,35,53.0
+C. O (exterior),35,36,43.6
+C. M norte,36,37,73.5
+C. M norte,37,38,39.9
+C. M norte,38,39,30.5
+C. M norte,39,40,22.0
+C. L,40,41,41.2
+C. L,41,42,41.6
+C. L,42,43,33.1
+C. L,43,44,56.3
+C. L,44,45,46.2
+C. L,45,46,32.3
+C. L,46,47,33.1
+C. L,47,48,35.2
+C. L,48,49,40.9
+C. L,49,50,41.5
+C. L,50,51,47.4
+C. H,52,53,29.5
+C. H,53,54,28.6
+C. H,54,55,48.2
+C. H,55,56,46.4
+C. H,56,57,28.6
+C. H,57,58,55.9
+C. H,58,59,46.5
+C. H,59,60,42.4
+C. H,60,61,45.1
+C. Q / C. R,63,64,36.2
+C. Q / C. R,64,65,41.1
+C. Q / C. R,65,66,37.8
+C. Q / C. R,66,67,38.1
+C. Q / C. R,67,68,28.2
+C. Q / C. R,68,69,33.1
+C. Q / C. R,69,70,41.5

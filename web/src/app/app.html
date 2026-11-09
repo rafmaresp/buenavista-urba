@@ -1,0 +1,94 @@
+<header class="top">
+  <h1>Incidencias Buenavista I</h1>
+  @if (esAdmin()) {
+    <nav class="row">
+      <button class="btn small" [attr.aria-pressed]="modo() === 'vecino'" (click)="cambiarModo('vecino')">Vecinos</button>
+      <button class="btn small" [attr.aria-pressed]="modo() === 'gestion'" (click)="cambiarModo('gestion')">Gestión</button>
+    </nav>
+  }
+</header>
+
+<main class="layout">
+  <div #mapa class="mapa" role="application" aria-label="Mapa de la urbanización"></div>
+
+  <aside class="panel">
+    @if (modo() === 'gestion') {
+      <bv-gestion [incidencias]="gestion()" [calles]="calles()" (cambiar)="cambiarEstado($event)" />
+    } @else if (enviada(); as i) {
+      <div class="eyebrow">Enviada</div>
+      <h2>Gracias, ya está en el mapa</h2>
+      <p class="hint">La junta la verá en su panel.</p>
+      <div class="row">
+        <a class="btn primary" [href]="textoWhatsApp(i)" target="_blank" rel="noopener">Avisar por WhatsApp</a>
+        <button class="btn" (click)="cancelar()">Volver al mapa</button>
+      </div>
+    } @else if (borrador(); as b) {
+      <div class="row between">
+        <div class="eyebrow">Nueva incidencia</div>
+        <button class="btn small" (click)="cancelar()">Cancelar</button>
+      </div>
+
+      @if (duplicado(); as ya) {
+        <div class="nota">
+          <b>{{ b.tipo === 'farola' ? 'Esta farola ya está reportada' : 'Ya hay un ' + TIPOS[ya.tipo].toLowerCase() + ' reportado a menos de 20 m' }}</b>
+          ({{ fecha(ya.creada) }}, {{ ESTADOS[ya.estado].toLowerCase() }}, {{ ya.votos }} {{ ya.votos === 1 ? 'vecino' : 'vecinos' }}).
+          @if (ya.descripcion) { «{{ ya.descripcion }}». }
+          Si es lo mismo, súmate en vez de duplicarlo.
+          <div><button class="btn primary small" (click)="apoyar(ya)">A mí también</button></div>
+        </div>
+      }
+
+      <div class="tipos" role="radiogroup" aria-label="Tipo">
+        @for (t of tipos; track t) {
+          <label>
+            <input type="radio" name="tipo" [value]="t" [checked]="b.tipo === t" (change)="cambiarTipo(t)" />
+            <span>{{ TIPOS[t] }}</span>
+          </label>
+        }
+      </div>
+
+      <div class="donde">
+        @if (farolaDe(b.farolaId); as f) {
+          <b>{{ f.id }}</b> · {{ f.calle }} <span class="hint">({{ f.verif ? '±2–3 m, verificada' : '±5–8 m, estimada' }})</span>
+        } @else {
+          <b>{{ b.calle || 'Punto en el mapa' }}</b> · {{ b.lat.toFixed(5) }}, {{ b.lon.toFixed(5) }}
+          <br /><span class="hint">Arrastra el marcador para afinar.</span>
+        }
+      </div>
+
+      <label class="campo">Descripción (opcional)
+        <textarea rows="2" maxlength="500" [ngModel]="b.descripcion" (ngModelChange)="campo('descripcion', $event)"
+          placeholder="Ej.: lleva dos noches apagada"></textarea>
+      </label>
+      <label class="campo">Teléfono o email (opcional)
+        <input type="text" maxlength="100" autocomplete="off" [ngModel]="b.contacto" (ngModelChange)="campo('contacto', $event)"
+          placeholder="Solo si quieres que la junta te avise" />
+      </label>
+      <p class="hint small">No pedimos tu nombre. El contacto es opcional y solo lo ve la junta.</p>
+
+      @if (!(duplicado() && b.tipo === 'farola')) {
+        <button class="btn primary" [disabled]="enviando()" (click)="enviar()">{{ enviando() ? 'Enviando…' : 'Enviar a la junta' }}</button>
+      }
+    } @else {
+      <div class="eyebrow">Reportar una incidencia</div>
+      <h2>¿Qué ha pasado?</h2>
+      <p class="hint">Toca una farola para avisar de que está fundida, o una calle para un bache.</p>
+      <h3>Abiertas ({{ abiertas().length }})</h3>
+      @for (i of abiertas(); track i.id) {
+        <article class="card">
+          <div class="card-top">
+            <b>{{ TIPOS[i.tipo] }}{{ i.farolaId ? ' ' + i.farolaId : '' }}</b>
+            <span [class]="'badge st-' + i.estado">{{ ESTADOS[i.estado] }}</span>
+          </div>
+          <div class="hint">{{ i.calle || 'Sin calle' }} · {{ fecha(i.creada) }} · {{ i.votos }} {{ i.votos === 1 ? 'vecino' : 'vecinos' }}</div>
+          @if (i.descripcion) { <p>«{{ i.descripcion }}»</p> }
+          <button class="btn small" (click)="apoyar(i)">A mí también</button>
+        </article>
+      } @empty {
+        <p class="hint">No hay incidencias abiertas.</p>
+      }
+    }
+  </aside>
+</main>
+
+@if (aviso(); as m) { <div class="toast" role="status">{{ m }}</div> }

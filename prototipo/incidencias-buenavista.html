@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Incidencias Buenavista I</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: mapa a pantalla completa, barra superior fina, panel inferior deslizable (móvil) / lateral (escritorio) */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --fg:#17201d; --muted:#5d6b66; --line:#d6dedb;
+  --accent:#0f6b5c; --accent-fg:#ffffff;
+  --st-nuevo:#c7362b; --st-encurso:#d98a00; --st-completado:#2f8a3e; --farola:#2a4b8d; --calle:#e8b100;
+  --f-display:"Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body:"Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#111816; --surface:#1a2320; --fg:#e7eeeb; --muted:#9db0a9; --line:#2d3a36;
+  --accent:#3fb39d; --accent-fg:#06221c; --farola:#8fb0f0; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);display:flex;flex-direction:column}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;margin:0;text-wrap:balance}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:max(8px,env(safe-area-inset-top,0px));background:var(--surface);border-bottom:1px solid var(--line);z-index:1000}
+header h1{font-size:20px;letter-spacing:.01em}
+header .sub{color:var(--muted);font-size:13px}
+.mode{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mode button{border:0;background:transparent;padding:6px 12px;font-family:var(--f-display);font-weight:600;font-size:15px}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+
+main{flex:1;display:flex;min-height:0;position:relative}
+#map{flex:1;min-width:0;background:var(--bg)}
+aside{width:380px;max-width:100%;background:var(--surface);border-left:1px solid var(--line);overflow:auto;
+  padding:16px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:760px){
+  main{flex-direction:column}
+  aside{width:100%;border-left:0;border-top:1px solid var(--line);max-height:46%;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+}
+.eyebrow{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted);font-weight:600}
+.hint{color:var(--muted);font-size:14px;margin:0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.small{padding:4px 9px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.types label{border:1px solid var(--line);border-radius:8px;padding:8px 4px;text-align:center;font-size:13px;font-weight:600;cursor:pointer}
+.types input{position:absolute;opacity:0;pointer-events:none}
+.types input:checked + span{color:var(--accent)}
+.types label:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.types label:has(input:focus-visible){outline:2px solid var(--accent)}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
+textarea,input[type=text]{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);width:100%}
+.where{font-size:14px;background:var(--bg);border-radius:8px;padding:8px 10px}
+.where b{font-family:var(--f-display);font-size:16px}
+.thumb{max-width:100%;max-height:160px;border-radius:8px;display:block}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;font-family:var(--f-display);letter-spacing:.03em;text-transform:uppercase}
+.pill.nuevo{background:var(--st-nuevo)} .pill.encurso{background:var(--st-encurso)} .pill.completado{background:var(--st-completado)}
+.list{display:flex;flex-direction:column;gap:8px}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:4px 10px}
+.card .t{font-family:var(--f-display);font-weight:700;font-size:16px}
+.card .m{color:var(--muted);font-size:13px;grid-column:1/-1}
+.card .a{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.card img{grid-column:1/-1;max-height:90px;width:auto;border-radius:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-variant-numeric:tabular-nums}
+.stats div{border-radius:8px;padding:6px 8px;background:var(--bg)}
+.stats b{display:block;font-family:var(--f-display);font-size:22px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.note{font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);
+  padding:8px 14px;border-radius:8px;z-index:2000;font-weight:600}
+pre.msg{white-space:pre-wrap;background:var(--bg);border-radius:8px;padding:8px;font-size:13px;margin:0;max-height:180px;overflow:auto}
+.leaflet-container{font-family:var(--f-body)}
+.lbl{background:transparent;border:0;box-shadow:none;font-family:var(--f-display);font-weight:700;font-size:11px;color:var(--fg);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface)}
+.lbl::before{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Incidencias Buenavista I</h1>
+    <div class="sub">Prototipo · AP 52.1 · Dos Hermanas</div>
+  </div>
+  <div class="mode" role="group" aria-label="Vista">
+    <button id="m-vecino" aria-pressed="true">Vecino</button>
+    <button id="m-junta" aria-pressed="false">Admin</button>
+  </div>
+</header>
+<main>
+  <div id="map" aria-label="Mapa de la urbanización"></div>
+  <aside id="panel"></aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ===== Datos: farolas y tramos de calle extraídos de farolas_buenavista.kml ===== */
+const DATA = {"farolas":[{"id":"F01","calle":"C. M (paralela A-8032)","lat":37.3186864,"lon":-5.961454,"verif":true},{"id":"F02","calle":"C. M (paralela A-8032)","lat":37.3184329,"lon":-5.9617754,"verif":false},{"id":"F03","calle":"C. M (paralela A-8032)","lat":37.3181375,"lon":-5.9620907,"verif":true},{"id":"F04","calle":"C. M (paralela A-8032)","lat":37.3178323,"lon":-5.9625769,"verif":false},{"id":"F05","calle":"C. M (paralela A-8032)","lat":37.3173632,"lon":-5.9625627,"verif":false},{"id":"F06","calle":"C. M (paralela A-8032)","lat":37.3170108,"lon":-5.9624954,"verif":false},{"id":"F07","calle":"C. M (paralela A-8032)","lat":37.3166202,"lon":-5.9624717,"verif":true},{"id":"F08","calle":"C. M (paralela A-8032)","lat":37.3162135,"lon":-5.9624605,"verif":true},{"id":"F09","calle":"C. M (paralela A-8032)","lat":37.3158694,"lon":-5.9624599,"verif":false},{"id":"F10","calle":"C. M (paralela A-8032)","lat":37.3153813,"lon":-5.9624363,"verif":false},{"id":"F11","calle":"C. M (paralela A-8032)","lat":37.315132,"lon":-5.9622965,"verif":false},{"id":"F12","calle":"C. M (paralela A-8032)","lat":37.3146372,"lon":-5.9623175,"verif":false},{"id":"F13","calle":"C. M (paralela A-8032)","lat":37.3143583,"lon":-5.9619842,"verif":false},{"id":"F14","calle":"C. M (paralela A-8032)","lat":37.3140317,"lon":-5.961655,"verif":false},{"id":"F15","calle":"C. M (paralela A-8032)","lat":37.3136521,"lon":-5.9613908,"verif":true},{"id":"F16","calle":"C. M (paralela A-8032)","lat":37.3137089,"lon":-5.9612346,"verif":true},{"id":"F17","calle":"C. Buenavista","lat":37.3138648,"lon":-5.9608466,"verif":true},{"id":"F18","calle":"C. Buenavista","lat":37.3140371,"lon":-5.9604217,"verif":true},{"id":"F19","calle":"C. Buenavista","lat":37.3142231,"lon":-5.9599348,"verif":true},{"id":"F20","calle":"C. Buenavista","lat":37.3144153,"lon":-5.9594344,"verif":false},{"id":"F21","calle":"C. Buenavista","lat":37.3146052,"lon":-5.9589837,"verif":false},{"id":"F22","calle":"C. Buenavista","lat":37.3148025,"lon":-5.9585879,"verif":false},{"id":"F23","calle":"C. Buenavista","lat":37.3149022,"lon":-5.9582914,"verif":false},{"id":"F24","calle":"C. Buenavista","lat":37.3150514,"lon":-5.9579264,"verif":false},{"id":"F25","calle":"C. O (exterior)","lat":37.3151806,"lon":-5.9575111,"verif":true},{"id":"F26","calle":"C. O (exterior)","lat":37.3155412,"lon":-5.957556,"verif":false},{"id":"F27","calle":"C. O (exterior)","lat":37.3159766,"lon":-5.9576665,"verif":true},{"id":"F28","calle":"C. O (exterior)","lat":37.3163948,"lon":-5.9577788,"verif":true},{"id":"F29","calle":"C. O (exterior)","lat":37.3167851,"lon":-5.9579504,"verif":false},{"id":"F30","calle":"C. O (exterior)","lat":37.3171215,"lon":-5.9580716,"verif":true},{"id":"F31","calle":"C. O (exterior)","lat":37.3174385,"lon":-5.958278,"verif":false},{"id":"F32","calle":"C. O (exterior)","lat":37.317768,"lon":-5.9585001,"verif":false},{"id":"F33","calle":"C. O (exterior)","lat":37.3180725,"lon":-5.9587329,"verif":false},{"id":"F34","calle":"C. O (exterior)","lat":37.3183511,"lon":-5.9589546,"verif":false},{"id":"F35","calle":"C. O (exterior)","lat":37.318772,"lon":-5.9592379,"verif":false},{"id":"F36","calle":"C. O (exterior)","lat":37.3191105,"lon":-5.959488,"verif":false},{"id":"F37","calle":"C. M norte","lat":37.3189849,"lon":-5.960303,"verif":false},{"id":"F38","calle":"C. M norte","lat":37.3188874,"lon":-5.9607371,"verif":false},{"id":"F39","calle":"C. M norte","lat":37.3188012,"lon":-5.961064,"verif":false},{"id":"F40","calle":"C. M norte","lat":37.3186225,"lon":-5.9611712,"verif":false},{"id":"F41","calle":"C. L","lat":37.3182879,"lon":-5.9609683,"verif":false},{"id":"F42","calle":"C. L","lat":37.3179567,"lon":-5.960748,"verif":false},{"id":"F43","calle":"C. L","lat":37.3176904,"lon":-5.9605807,"verif":false},{"id":"F44","calle":"C. L","lat":37.3172748,"lon":-5.9602152,"verif":false},{"id":"F45","calle":"C. L","lat":37.3168805,"lon":-5.9600475,"verif":false},{"id":"F46","calle":"C. L","lat":37.3166152,"lon":-5.9598973,"verif":false},{"id":"F47","calle":"C. L","lat":37.3164033,"lon":-5.9596341,"verif":false},{"id":"F48","calle":"C. L","lat":37.3161023,"lon":-5.9595079,"verif":false},{"id":"F49","calle":"C. L","lat":37.3158018,"lon":-5.95924,"verif":false},{"id":"F50","calle":"C. L","lat":37.3154444,"lon":-5.9591032,"verif":false},{"id":"F51","calle":"C. L","lat":37.3150657,"lon":-5.9588546,"verif":false},{"id":"F52","calle":"C. H","lat":37.3169672,"lon":-5.9584361,"verif":true},{"id":"F53","calle":"C. H","lat":37.3168861,"lon":-5.9587537,"verif":false},{"id":"F54","calle":"C. H","lat":37.3167686,"lon":-5.9590413,"verif":false},{"id":"F55","calle":"C. H","lat":37.3165384,"lon":-5.9595029,"verif":false},{"id":"F56","calle":"C. H","lat":37.316313,"lon":-5.9599439,"verif":false},{"id":"F57","calle":"C. H","lat":37.3162071,"lon":-5.960238,"verif":false},{"id":"F58","calle":"C. H","lat":37.315994,"lon":-5.9608101,"verif":false},{"id":"F59","calle":"C. H","lat":37.3157812,"lon":-5.9612628,"verif":false},{"id":"F60","calle":"C. H","lat":37.3156371,"lon":-5.9617066,"verif":false},{"id":"F61","calle":"C. H","lat":37.3154682,"lon":-5.9621701,"verif":false},{"id":"F63","calle":"C. Q / C. R","lat":37.3154888,"lon":-5.9613504,"verif":false},{"id":"F64","calle":"C. Q / C. R","lat":37.3151631,"lon":-5.9613212,"verif":false},{"id":"F65","calle":"C. Q / C. R","lat":37.3149055,"lon":-5.960987,"verif":false},{"id":"F66","calle":"C. Q / C. R","lat":37.3150858,"lon":-5.9606253,"verif":false},{"id":"F67","calle":"C. Q / C. R","lat":37.3152319,"lon":-5.9602363,"verif":false},{"id":"F68","calle":"C. Q / C. R","lat":37.3153393,"lon":-5.9599476,"verif":false},{"id":"F69","calle":"C. Q / C. R","lat":37.3151333,"lon":-5.9596763,"verif":false},{"id":"F70","calle":"C. Q / C. R","lat":37.3148052,"lon":-5.9594514,"verif":false}],"tramos":[{"calle":"C. M (paralela A-8032)","pts":[[37.3186864,-5.961454],[37.3184329,-5.9617754],[37.3181375,-5.9620907],[37.3178323,-5.9625769],[37.3173632,-5.9625627],[37.3170108,-5.9624954],[37.3166202,-5.9624717],[37.3162135,-5.9624605],[37.3158694,-5.9624599],[37.3153813,-5.9624363],[37.315132,-5.9622965],[37.3146372,-5.9623175],[37.3143583,-5.9619842],[37.3140317,-5.961655],[37.3136521,-5.9613908],[37.3137089,-5.9612346]]},{"calle":"C. Buenavista","pts":[[37.3137089,-5.9612346],[37.3138648,-5.9608466],[37.3140371,-5.9604217],[37.3142231,-5.9599348],[37.3144153,-5.9594344],[37.3146052,-5.9589837],[37.3148025,-5.9585879],[37.3149022,-5.9582914],[37.3150514,-5.9579264]]},{"calle":"C. O (exterior)","pts":[[37.3150514,-5.9579264],[37.3151806,-5.9575111],[37.3155412,-5.957556],[37.3159766,-5.9576665],[37.3163948,-5.9577788],[37.3167851,-5.9579504],[37.3171215,-5.9580716],[37.3174385,-5.958278],[37.317768,-5.9585001],[37.3180725,-5.9587329],[37.3183511,-5.9589546],[37.318772,-5.9592379],[37.3191105,-5.959488]]},{"calle":"C. M norte","pts":[[37.3191105,-5.959488],[37.3189849,-5.960303],[37.3188874,-5.9607371],[37.3188012,-5.961064],[37.3186225,-5.9611712]]},{"calle":"C. L","pts":[[37.3186225,-5.9611712],[37.3182879,-5.9609683],[37.3179567,-5.960748],[37.3176904,-5.9605807],[37.3172748,-5.9602152],[37.3168805,-5.9600475],[37.3166152,-5.9598973],[37.3164033,-5.9596341],[37.3161023,-5.9595079],[37.3158018,-5.95924],[37.3154444,-5.9591032],[37.3150657,-5.9588546]]},{"calle":"C. H","pts":[[37.3169672,-5.9584361],[37.3168861,-5.9587537],[37.3167686,-5.9590413],[37.3165384,-5.9595029],[37.316313,-5.9599439],[37.3162071,-5.960238],[37.315994,-5.9608101],[37.3157812,-5.9612628],[37.3156371,-5.9617066],[37.3154682,-5.9621701]]},{"calle":"C. Q / C. R","pts":[[37.3154888,-5.9613504],[37.3151631,-5.9613212],[37.3149055,-5.960987],[37.3150858,-5.9606253],[37.3152319,-5.9602363],[37.3153393,-5.9599476],[37.3151333,-5.9596763],[37.3148052,-5.9594514]]}]};
+
+/* ===== Configuración =====
+   API_URL vacío: modo demo, las incidencias se guardan solo en este navegador (no se comparten entre vecinos).
+   API_URL con valor: la página usa ese backend (p. ej. Azure Function) para que todos vean lo mismo:
+     GET   {API_URL}            -> [incidencia, ...]
+     POST  {API_URL}            <- incidencia nueva (el backend guarda y envía el correo a la junta)
+     PATCH {API_URL}/{id}       <- { votos } o { estado }
+   WHATSAPP_NUM: número de la junta/mantenedor en formato internacional sin '+', p. ej. '34600111222'. */
+const CONFIG = { API_URL: '', WHATSAPP_NUM: '' };
+const LS_I = 'bv1_incidencias_v2';
+const TIPOS = {farola:'Farola fundida', bache:'Bache', fuga:'Fuga de agua', otro:'Otro'};
+const ESTADOS = ['nuevo','encurso','completado'];
+const EST_LBL = {nuevo:'Nuevo',encurso:'En curso',completado:'Completado'};
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ toast('No se pudo guardar (almacenamiento lleno o bloqueado)'); return false; } }
+};
+let farolas = DATA.farolas.map(f=>({...f,prec:f.verif?'±2–3 m (verificada)':'±5–8 m (estimada)'}));
+const tramos = DATA.tramos;
+let incid = store.get(LS_I, null);
+let mode = 'vecino', draft = null, filtro = 'pendientes', fTipo = '', fCalle = '';
+
+/* ===== Mapa ===== */
+const map = L.map('map',{zoomControl:true}).setView([37.3165,-5.9606],17);
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,maxNativeZoom:19,attribution:'© OpenStreetMap'});
+const pnoa = L.tileLayer('https://www.ign.es/wmts/pnoa-ma?request=GetTile&service=WMTS&VERSION=1.0.0&Layer=OI.OrthoimageCoverage&Style=default&Format=image/jpeg&TileMatrixSet=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}',{maxZoom:20,maxNativeZoom:19,attribution:'PNOA © IGN'});
+pnoa.addTo(map);
+const redes = L.layerGroup(); // capa restringida: vacía hasta tener los as-built
+L.control.layers({'Ortofoto PNOA':pnoa,'Callejero OSM':osm},{'Redes (solo junta, pendiente de planos)':redes},{collapsed:true}).addTo(map);
+L.control.scale({imperial:false}).addTo(map);
+const lyTramos = L.layerGroup().addTo(map), lyFarolas = L.layerGroup().addTo(map), lyIncid = L.layerGroup().addTo(map);
+let draftMarker = null, gpsCircle = null;
+
+/* ===== Render mapa ===== */
+function farolaColor(f){ const i=openFor(f.id); return i? 'var(--st-'+i.estado+')' : 'var(--farola)'; }
+function openFor(id){ return incid.find(i=>i.farolaId===id && i.estado!=='completado'); }
+function drawFarolas(){
+  lyFarolas.clearLayers();
+  farolas.forEach(f=>{
+    const radio = f.verif===true?3:(f.verif===false?8:null);
+    if(radio && map.getZoom()>=18) L.circle([f.lat,f.lon],{radius:radio,weight:0,fillOpacity:.12,fillColor:'#2a4b8d',interactive:false}).addTo(lyFarolas);
+    const m = L.circleMarker([f.lat,f.lon],{radius:8,weight:2,color:'#fff',fillOpacity:1,fillColor:getCss(farolaColor(f))});
+    m.bindTooltip(f.id,{permanent:map.getZoom()>=18,direction:'right',className:'lbl',offset:[6,0]});
+    m.on('click',e=>{ L.DomEvent.stopPropagation(e); if(mode==='vecino') startDraft({tipo:'farola',farolaId:f.id,lat:f.lat,lon:f.lon}); else showFarolaJunta(f); });
+    m.addTo(lyFarolas);
+  });
+}
+function drawIncid(){
+  lyIncid.clearLayers();
+  incid.filter(i=>!i.farolaId && (mode==='junta' && filtro==='completado' ? i.estado==='completado' : i.estado!=='completado')).forEach(i=>{
+    const icon = L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+      html:`<div style="width:22px;height:22px;transform:rotate(45deg);background:${getCss('var(--st-'+i.estado+')')};border:2px solid #fff;border-radius:4px;box-shadow:0 1px 3px #0006"></div>`});
+    L.marker([i.lat,i.lon],{icon}).bindPopup(`<b>${TIPOS[i.tipo]}</b>${i.calle?' · '+esc(i.calle):''}<br>${esc(i.desc||'')}<br><small>${fecha(i.creada)} · ${EST_LBL[i.estado]}</small>`).addTo(lyIncid);
+  });
+}
+function getCss(v){ const m=v.match(/var\((--[^)]+)\)/); return m? getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() : v; }
+map.on('zoomend',drawFarolas);
+function drawTramos(){
+  lyTramos.clearLayers();
+  tramos.forEach(t=>{
+    L.polyline(t.pts,{color:getCss('var(--calle)'),weight:5,opacity:.85,interactive:false}).addTo(lyTramos);
+    const hit = L.polyline(t.pts,{color:'#000',weight:26,opacity:0}); // zona de toque ancha
+    hit.bindTooltip(t.calle,{sticky:true});
+    hit.on('click',e=>{ L.DomEvent.stopPropagation(e); onMapTap(e.latlng); });
+    hit.addTo(lyTramos);
+  });
+}
+function nearestTramo(ll){
+  const P = map.latLngToLayerPoint(ll); let best=null;
+  tramos.forEach(t=>{ const pts=t.pts.map(q=>map.latLngToLayerPoint(q));
+    for(let k=0;k<pts.length-1;k++){ const c=L.LineUtil.closestPointOnSegment(P,pts[k],pts[k+1]);
+      const lat=map.layerPointToLatLng(c), d=map.distance(ll,lat); if(!best||d<best.d) best={calle:t.calle,ll:lat,d}; } });
+  return best;
+}
+function onMapTap(ll){
+  if(mode!=='vecino') return;
+  const n = nearestTramo(ll);
+  if(n && n.d<=30) startDraft({tipo:'bache',lat:ll.lat,lon:ll.lng,calle:n.calle});
+  else startDraft({tipo:'otro',lat:ll.lat,lon:ll.lng,calle:''});
+}
+map.on('click',e=>onMapTap(e.latlng));
+
+/* ===== Panel ===== */
+const panel = document.getElementById('panel');
+function render(){ drawTramos(); drawFarolas(); drawIncid(); mode==='junta'? renderJunta() : (draft? renderForm() : renderVecino()); }
+
+function renderVecino(){
+  const abiertas = incid.filter(i=>i.estado!=='completado').length;
+  panel.innerHTML = `
+    <div><div class="eyebrow">Reportar una incidencia</div>
+    <h2 style="font-size:22px">¿Qué ha pasado?</h2></div>
+    <ol class="hint" style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:4px">
+      <li>Toca una <b>farola</b> (punto azul) para avisar de que está fundida y deja un comentario.</li>
+      <li>Toca una <b>calle</b> (línea amarilla) en el sitio del bache.</li>
+      <li>Para una fuga u otra cosa, toca el punto o usa tu ubicación.</li></ol>
+    <div class="row"><button class="btn primary" id="gps">Usar mi ubicación</button></div>
+    <div><div class="eyebrow">Ya reportadas, pendientes (${abiertas})</div>
+    <p class="hint" style="margin-top:2px">Si tu problema está aquí, pulsa «A mí también» en vez de reportarlo otra vez.</p></div>
+    <div class="list">${incid.filter(i=>i.estado!=='completado').map(i=>`<div class="card">
+      <div class="t">${TIPOS[i.tipo]}${i.farolaId?' · '+esc(i.farolaId):''}</div><div><span class="pill ${i.estado}">${EST_LBL[i.estado]}</span></div>
+      <div class="m">${i.calle?esc(i.calle)+' · ':''}${fecha(i.creada)} · ${i.votos||1} ${(i.votos||1)>1?'vecinos':'vecino'}${i.desc?'<br>'+esc(i.desc):''}</div>
+      <div class="a"><button class="btn small" data-go="${i.id}">Ver en mapa</button><button class="btn small" data-plus="${i.id}">A mí también</button></div></div>`).join('') || '<p class="hint">No hay incidencias pendientes.</p>'}</div>
+    <div class="note">Rojo: nuevo · Ámbar: en curso · Azul: farola sin incidencias.${CONFIG.API_URL?'':' <b>Modo demo:</b> lo que reportes se guarda solo en este navegador; para que lo vean todos los vecinos hace falta el backend.'}</div>`;
+  panel.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ const i=incid.find(x=>x.id===b.dataset.go); map.setView([i.lat,i.lon],19); });
+  panel.querySelectorAll('[data-plus]').forEach(b=>b.onclick=()=>sumarse(incid.find(x=>x.id===b.dataset.plus)));
+  document.getElementById('gps').onclick = ()=>locate(p=>{ const n=nearestTramo(L.latLng(p.lat,p.lon)); startDraft({tipo:n&&n.d<=30?'bache':'otro',lat:p.lat,lon:p.lon,acc:p.acc,calle:n&&n.d<=30?n.calle:''}); });
+}
+function fitFarolas(){ if(farolas.length) map.fitBounds(L.latLngBounds(farolas.map(f=>[f.lat,f.lon])).pad(.15)); }
+
+function startDraft(d){
+  draft = {tipo:d.tipo, farolaId:d.farolaId||null, calle:d.calle||'', lat:d.lat, lon:d.lon, acc:d.acc||null, desc:'', foto:null};
+  if(draftMarker) map.removeLayer(draftMarker);
+  draftMarker = L.marker([d.lat,d.lon],{draggable:!d.farolaId}).addTo(map);
+  draftMarker.on('dragend',()=>{ const p=draftMarker.getLatLng(); draft.lat=p.lat; draft.lon=p.lng; draft.farolaId=null; const n=nearestTramo(p); draft.calle=n&&n.d<=30?n.calle:''; renderForm(); });
+  renderForm();
+}
+function renderForm(){
+  const f = draft.farolaId && farolas.find(x=>x.id===draft.farolaId);
+  const ya = draft.tipo==='farola' ? (draft.farolaId && openFor(draft.farolaId))
+    : incid.filter(i=>i.tipo===draft.tipo && !i.farolaId && i.estado!=='completado').map(i=>({i,d:map.distance([i.lat,i.lon],[draft.lat,draft.lon])})).filter(x=>x.d<=20).sort((a,b)=>a.d-b.d).map(x=>x.i)[0];
+  const near = !draft.farolaId && nearestFarola(draft.lat,draft.lon);
+  panel.innerHTML = `
+    <div class="row" style="justify-content:space-between"><div class="eyebrow">Nueva incidencia</div><button class="btn small" id="cancel">Cancelar</button></div>
+    ${ya? `<div class="note" style="border-color:var(--st-nuevo)"><b>${draft.tipo==='farola'?'Esta farola ya está reportada':'Ya hay un '+TIPOS[ya.tipo].toLowerCase()+' reportado a menos de 20 m'}</b> (${fecha(ya.creada)}, ${EST_LBL[ya.estado].toLowerCase()}${ya.votos>1?`, ${ya.votos} vecinos`:''}). ${ya.desc?'«'+esc(ya.desc)+'». ':''}Si es lo mismo, súmate en vez de duplicarlo.<div style="margin-top:6px"><button class="btn small primary" id="plus1">A mí también me pasa</button></div></div>`:''}
+    <div class="types" role="radiogroup" aria-label="Tipo">
+      ${Object.entries(TIPOS).map(([k,v])=>`<label><input type="radio" name="tipo" value="${k}" ${draft.tipo===k?'checked':''}><span>${v}</span></label>`).join('')}
+    </div>
+    <div class="where">${f? `<b>${f.id}</b> · ${esc(f.calle||'')} <span class="hint">(${f.prec||''})</span>`
+      : `<b>${draft.calle?esc(draft.calle):'Punto en el mapa'}</b> · ${draft.lat.toFixed(5)}, ${draft.lon.toFixed(5)}${draft.acc?` · GPS ±${Math.round(draft.acc)} m`:''}<br><span class="hint">Arrastra el marcador para afinar.${near&&near.d<25?` Cerca de ${near.f.id} (${Math.round(near.d)} m).`:''}</span>`}</div>
+    <label class="f" for="desc">Descripción (opcional)<textarea id="desc" rows="2" placeholder="${draft.tipo==='fuga'?'Ej.: sale agua junto a la arqueta':draft.tipo==='bache'?'Ej.: bache grande delante del nº 12':'Ej.: lleva dos noches apagada'}">${esc(draft.desc)}</textarea></label>
+    <div class="row">
+      <label class="btn" for="foto">${draft.foto?'Cambiar foto':'Añadir foto'}</label>
+      <input type="file" id="foto" accept="image/*" capture="environment" hidden>
+      ${!f?'<button class="btn" id="gps2">Usar mi ubicación</button>':''}
+    </div>
+    ${draft.foto?`<img class="thumb" src="${draft.foto}" alt="Foto adjunta">`:''}
+    <label class="f" for="contacto">Teléfono o email (opcional)<input type="text" id="contacto" value="${esc(draft.contacto||'')}" placeholder="Solo si quieres que la junta te avise" autocomplete="off"></label>
+    <p class="hint" style="font-size:12px">No pedimos tu nombre. El contacto es opcional y solo lo ve la junta: no aparece en el mapa ni en la lista de vecinos. Evita que salgan personas o matrículas en la foto.</p>
+    ${ya&&draft.tipo==='farola'?'':'<button class="btn primary" id="send">Enviar a la junta</button>'}`;
+  panel.querySelectorAll('input[name=tipo]').forEach(r=>r.onchange=()=>{ draft.tipo=r.value; if(r.value!=='farola') draft.farolaId=null; renderForm(); });
+  document.getElementById('desc').oninput = e=>draft.desc=e.target.value;
+  document.getElementById('contacto').oninput = e=>draft.contacto=e.target.value;
+  document.getElementById('cancel').onclick = cancelDraft;
+  document.getElementById('foto').onchange = e=>e.target.files[0] && resizeImg(e.target.files[0],url=>{draft.foto=url;renderForm();});
+  const g=document.getElementById('gps2'); if(g) g.onclick=()=>locate(p=>{draft.lat=p.lat;draft.lon=p.lon;draft.acc=p.acc;draftMarker.setLatLng([p.lat,p.lon]);renderForm();});
+  const p1=document.getElementById('plus1'); if(p1) p1.onclick=()=>{ cancelDraft(); sumarse(ya); };
+  const sb=document.getElementById('send'); if(sb) sb.onclick = submit;
+}
+function submit(){
+  if(draft.tipo==='farola' && !draft.farolaId){
+    const n = nearestFarola(draft.lat,draft.lon);
+    if(n && n.d<25) draft.farolaId = n.f.id; else { toast('Toca la farola en el mapa para indicar cuál es'); return; }
+  }
+  const fo = draft.tipo==='farola' && farolas.find(x=>x.id===draft.farolaId);
+  const i = {id:'I'+Date.now().toString(36), tipo:draft.tipo, farolaId:draft.tipo==='farola'?draft.farolaId:null, calle: fo? fo.calle : draft.calle,
+    lat:draft.lat, lon:draft.lon, desc:draft.desc.trim(), contacto:(draft.contacto||'').trim(), foto:draft.foto, estado:'nuevo', votos:1, creada:Date.now(), hist:[{t:Date.now(),e:'nuevo'}]};
+  const btn=document.getElementById('send'); btn.disabled=true; btn.textContent='Enviando…';
+  api('POST','',i).then(()=>{
+    incid.unshift(i);
+    if(!save()){ incid.shift(); btn.disabled=false; btn.textContent='Enviar a la junta'; return; }
+    cancelDraft(); renderEnviada(i);
+  }).catch(e=>{ btn.disabled=false; btn.textContent='Enviar a la junta'; toast('No se pudo enviar: '+e.message); });
+}
+function renderEnviada(i){
+  const txt = 'Nueva incidencia en Buenavista I:\n'+textoIncidencia(i);
+  panel.innerHTML = `
+    <div><div class="eyebrow">Enviada</div><h2 style="font-size:22px">Gracias, ya está en el mapa</h2></div>
+    <p class="hint">${CONFIG.API_URL?'La junta recibe un correo con el aviso.':'En la versión real, la junta recibirá aquí un correo automático. Ahora es una simulación.'}</p>
+    <pre class="msg">${esc(txt)}</pre>
+    <div class="row"><a class="btn primary" href="${waLink(txt)}" target="_blank" rel="noopener">Avisar por WhatsApp</a><button class="btn" id="back">Volver al mapa</button></div>
+    ${CONFIG.WHATSAPP_NUM?'':'<p class="hint" style="font-size:12px">Sin número configurado, WhatsApp te deja elegir el contacto o grupo.</p>'}`;
+  document.getElementById('back').onclick = render;
+}
+function cancelDraft(){ draft=null; if(draftMarker){map.removeLayer(draftMarker);draftMarker=null;} render(); }
+function nearestFarola(lat,lon){ let best=null; farolas.forEach(f=>{ const d=map.distance([lat,lon],[f.lat,f.lon]); if(!best||d<best.d) best={f,d}; }); return best; }
+
+/* ===== Vista junta ===== */
+function renderJunta(){
+  const c = e=>incid.filter(i=>i.estado===e).length;
+  const list = incid.filter(i=> (filtro==='pendientes'? i.estado!=='completado' : i.estado===filtro) && (!fTipo||i.tipo===fTipo) && (!fCalle||i.calle===fCalle));
+  const calles = [...new Set(tramos.map(t=>t.calle))];
+  panel.innerHTML = `
+    <div><div class="eyebrow">Panel de administración (junta)</div><h2 style="font-size:22px">Incidencias</h2></div>
+    <div class="stats"><div><span class="hint">Nuevas</span><b style="color:var(--st-nuevo)">${c('nuevo')}</b></div>
+      <div><span class="hint">En curso</span><b style="color:var(--st-encurso)">${c('encurso')}</b></div>
+      <div><span class="hint">Completadas</span><b style="color:var(--st-completado)">${c('completado')}</b></div></div>
+    <div class="filters">${[['pendientes','Activas (nuevo + en curso)'],['nuevo','Nuevo'],['encurso','En curso'],['completado','Completadas']].map(([f,l])=>`<button class="btn small" data-f="${f}" aria-pressed="${filtro===f}">${l}</button>`).join('')}</div>
+    <div class="row"><label class="f" for="ftipo" style="flex:1">Tipo<select id="ftipo" class="btn"><option value="">Todos</option>${Object.entries(TIPOS).map(([k,v])=>`<option value="${k}" ${fTipo===k?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="f" for="fcalle" style="flex:1">Calle<select id="fcalle" class="btn"><option value="">Todas</option>${calles.map(c=>`<option ${fCalle===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label></div>
+    <p class="hint" style="font-size:13px">${list.length} de ${incid.length} incidencias</p>
+    <div class="row"><button class="btn" id="aviso">Generar aviso al mantenedor</button><button class="btn" id="demo">Cargar ejemplos</button></div>
+    <div id="msgbox"></div>
+    <div class="list">${list.length? list.map(cardHTML).join('') : '<p class="hint">No hay incidencias en este filtro.</p>'}</div>
+    <div class="note"><b>Capa de redes:</b> aquí irán tuberías y cables (alumbrado, agua, saneamiento, BT) cuando se consigan los planos as-built. Solo visible para junta y mantenimiento; orientativa, nunca para excavar.</div>
+    ${incid.length?'<button class="btn small" id="wipe">Vaciar todas las incidencias</button>':''}`;
+  panel.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{filtro=b.dataset.f;renderJunta();});
+  document.getElementById('ftipo').onchange=e=>{fTipo=e.target.value;renderJunta();};
+  document.getElementById('fcalle').onchange=e=>{fCalle=e.target.value;renderJunta();};
+  panel.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ const i=incid.find(x=>x.id===b.dataset.id); i.estado=b.dataset.st; i.hist.push({t:Date.now(),e:i.estado}); api('PATCH','/'+i.id,{estado:i.estado}).catch(e=>toast('No se pudo guardar: '+e.message)); save(); });
+  panel.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ const i=incid.find(x=>x.id===b.dataset.go); map.setView([i.lat,i.lon],19); });
+  document.getElementById('aviso').onclick = aviso;
+  document.getElementById('demo').onclick = demo;
+  const w=document.getElementById('wipe');
+  if(w) w.onclick=()=>{ if(w.dataset.ok){ incid=[]; save(); } else { w.dataset.ok=1; w.textContent='Pulsa otra vez para confirmar'; } };
+}
+function cardHTML(i){
+  const f = i.farolaId && farolas.find(x=>x.id===i.farolaId);
+  const next = ESTADOS.filter(e=>e!==i.estado);
+  return `<div class="card">
+    <div class="t">${TIPOS[i.tipo]}${i.farolaId?' · '+esc(i.farolaId):''}</div><div><span class="pill ${i.estado}">${EST_LBL[i.estado]}</span></div>
+    <div class="m">${i.calle?esc(i.calle)+' · ':''}${fecha(i.creada)}${i.votos>1?` · ${i.votos} vecinos`:''}${i.desc?'<br>'+esc(i.desc):''}${i.contacto?`<br><span style="font-size:12px">Contacto (solo junta): ${esc(i.contacto)}</span>`:''}<br><span style="font-size:12px">Historial: ${i.hist.map(h=>fecha(h.t)+' '+esc(EST_LBL[h.e]||h.e)).join(' → ')}</span></div>
+    ${i.foto?`<img src="${i.foto}" alt="Foto de la incidencia">`:''}
+    <div class="a"><button class="btn small" data-go="${i.id}">Ver en mapa</button>
+      ${next.map(e=>`<button class="btn small" data-id="${i.id}" data-st="${e}">→ ${EST_LBL[e]}</button>`).join('')}</div>
+  </div>`;
+}
+function showFarolaJunta(f){
+  const h = incid.filter(i=>i.farolaId===f.id);
+  L.popup().setLatLng([f.lat,f.lon]).setContent(`<b>${esc(f.id)}</b> · ${esc(f.calle||'')}<br><small>${esc(f.prec||'')}</small><br>${h.length? h.map(i=>`${fecha(i.creada)}: ${EST_LBL[i.estado]}`).join('<br>') : 'Sin incidencias'}`).openOn(map);
+}
+function aviso(){
+  const ab = incid.filter(i=>i.estado==='nuevo');
+  const box = document.getElementById('msgbox');
+  if(!ab.length){ box.innerHTML='<p class="hint">No hay incidencias nuevas que avisar.</p>'; return; }
+  const txt = `Buenos días. Incidencias pendientes en Buenavista I (AP 52.1), ${new Date().toLocaleDateString('es-ES')}:\n\n` +
+    ab.map(i=>{ const f=i.farolaId&&farolas.find(x=>x.id===i.farolaId);
+      return `- ${TIPOS[i.tipo]}${i.farolaId?' '+i.farolaId:''}${i.calle?' ('+i.calle+')':''}${i.desc?': '+i.desc:''}\n  https://maps.google.com/?q=${i.lat.toFixed(6)},${i.lon.toFixed(6)}`; }).join('\n') +
+    `\n\nGracias.`;
+  box.innerHTML = `<pre class="msg" id="msgtxt">${esc(txt)}</pre><div class="row" style="margin-top:6px"><button class="btn small primary" id="copy">Copiar</button><a class="btn small" href="${waLink(txt)}" target="_blank" rel="noopener">WhatsApp</a><button class="btn small" id="mark">Pasar ${ab.length} a en curso</button></div>`;
+  document.getElementById('copy').onclick = ()=>navigator.clipboard.writeText(txt).then(()=>toast('Copiado: pégalo en WhatsApp o en un correo'),()=>{ const r=document.createRange(); r.selectNodeContents(document.getElementById('msgtxt')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('Texto seleccionado: cópialo'); });
+  document.getElementById('mark').onclick = ()=>{ ab.forEach(i=>{i.estado='encurso';i.hist.push({t:Date.now(),e:'encurso'}); api('PATCH','/'+i.id,{estado:'encurso'}).catch(()=>{});}); save(); };
+}
+function demo(silent){
+  if(!farolas.length){ toast('Carga primero las farolas'); return; }
+  const pick = n=>farolas[Math.floor(n*farolas.length)];
+  const now=Date.now(), d=864e5;
+  const f1=pick(.1), f2=pick(.45), f3=pick(.8), f4=pick(.6);
+  const off=(f,dx,dy)=>({lat:f.lat+dy,lon:f.lon+dx});
+  const ej = [
+    {tipo:'farola',farolaId:f1.id,calle:f1.calle,...off(f1,0,0),desc:'[Ejemplo] Lleva tres noches apagada',estado:'nuevo',votos:3,creada:now-2*d},
+    {tipo:'farola',farolaId:f2.id,calle:f2.calle,...off(f2,0,0),desc:'[Ejemplo] Parpadea',estado:'encurso',votos:1,creada:now-6*d},
+    {tipo:'bache',calle:f3.calle,...off(f3,0,0),desc:'[Ejemplo] Bache en la calzada frente al portal',estado:'nuevo',votos:1,creada:now-1*d},
+    {tipo:'fuga',calle:f4.calle,...off(f4,-.0001,.00008),desc:'[Ejemplo] Sale agua junto a la arqueta',estado:'completado',votos:2,creada:now-12*d},
+  ].map((x,k)=>({id:'E'+k+now.toString(36),foto:null,hist:[{t:x.creada,e:'nuevo'}].concat(x.estado!=='nuevo'?[{t:x.creada+d,e:x.estado}]:[]),...x}));
+  incid = ej.concat(incid); save(); if(!silent) toast('Añadidos 4 ejemplos');
+}
+
+/* ===== Utilidades ===== */
+function save(){ const ok = CONFIG.API_URL ? true : store.set(LS_I,incid); render(); return ok; }
+async function api(method, path, body){
+  if(!CONFIG.API_URL) return null;
+  const r = await fetch(CONFIG.API_URL.replace(/\/$/,'')+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error('El servidor respondió '+r.status);
+  return r.status===204?null:r.json();
+}
+async function cargar(){
+  if(CONFIG.API_URL){
+    try{ incid = await api('GET',''); }catch(e){ incid=[]; toast('No se pudieron cargar las incidencias: '+e.message); }
+  } else if(!incid){ incid=[]; demo(true); }
+  render();
+}
+function sumarse(i){
+  i.votos=(i.votos||1)+1; i.hist.push({t:Date.now(),e:'+1 vecino'});
+  api('PATCH','/'+i.id,{votos:i.votos}).catch(e=>toast('No se pudo enviar: '+e.message));
+  save(); toast('Gracias. Sumado a la incidencia existente ('+i.votos+' vecinos).');
+}
+function textoIncidencia(i){
+  return `${TIPOS[i.tipo]}${i.farolaId?' '+i.farolaId:''}${i.calle?' ('+i.calle+')':''}${i.desc?': '+i.desc:''}\nhttps://maps.google.com/?q=${i.lat.toFixed(6)},${i.lon.toFixed(6)}`;
+}
+function waLink(txt){ return 'https://wa.me/'+(CONFIG.WHATSAPP_NUM||'')+'?text='+encodeURIComponent(txt); }
+function locate(cb){
+  if(!navigator.geolocation){ toast('Este navegador no da ubicación: toca el punto en el mapa'); return; }
+  toast('Buscando tu ubicación…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    const r={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
+    if(gpsCircle) map.removeLayer(gpsCircle);
+    gpsCircle = L.circle([r.lat,r.lon],{radius:r.acc,weight:1,fillOpacity:.08}).addTo(map);
+    map.setView([r.lat,r.lon],Math.max(map.getZoom(),18)); cb(r);
+  }, e=>toast('Sin ubicación ('+e.message+'). Toca el punto en el mapa.'), {enableHighAccuracy:true,timeout:10000});
+}
+function resizeImg(file,cb){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{ const s=Math.min(1,900/Math.max(img.width,img.height)), c=document.createElement('canvas');
+    c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg',.6)); };
+  img.onerror=()=>toast('No se pudo leer la imagen'); img.src=url;
+}
+function fecha(t){ return new Date(t).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let tt; function toast(m){ document.querySelector('.toast')?.remove(); const d=document.createElement('div'); d.className='toast'; d.textContent=m; document.body.appendChild(d); clearTimeout(tt); tt=setTimeout(()=>d.remove(),3200); }
+function setMode(m){ mode=m; if(draft) cancelDraft();
+  document.getElementById('m-vecino').setAttribute('aria-pressed',m==='vecino'); document.getElementById('m-junta').setAttribute('aria-pressed',m==='junta');
+  if(m==='junta') redes.addTo(map); else map.removeLayer(redes); render(); }
+document.getElementById('m-vecino').onclick=()=>setMode('vecino');
+document.getElementById('m-junta').onclick=()=>setMode('junta');
+
+/* ===== Arranque ===== */
+fitFarolas(); cargar();
+</script>
+</body>
+</html>

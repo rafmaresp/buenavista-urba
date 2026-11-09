@@ -1,0 +1,36 @@
+{
+  "platform": {
+    "apiRuntime": "dotnet-isolated:10.0"
+  },
+  "routes": [
+    {
+      "route": "/api/gestion/*",
+      "allowedRoles": [
+        "admin"
+      ]
+    },
+    {
+      "route": "/gestion",
+      "allowedRoles": [
+        "admin"
+      ]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/gestion",
+      "statusCode": 302
+    }
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/datos/*",
+      "/*.{css,js,json,png,ico,svg}"
+    ]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  }
+}
