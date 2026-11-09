@@ -1,11 +1,9 @@
 <header class="top">
   <h1>Incidencias Buenavista I</h1>
-  @if (esAdmin()) {
-    <nav class="row">
-      <button class="btn small" [attr.aria-pressed]="modo() === 'vecino'" (click)="cambiarModo('vecino')">Vecinos</button>
-      <button class="btn small" [attr.aria-pressed]="modo() === 'gestion'" (click)="cambiarModo('gestion')">Gestión</button>
-    </nav>
-  }
+  <nav class="row">
+    <button class="btn small" [attr.aria-pressed]="modo() === 'vecino'" (click)="cambiarModo('vecino')">Vecinos</button>
+    <button class="btn small" [attr.aria-pressed]="modo() === 'gestion'" (click)="cambiarModo('gestion')">Junta</button>
+  </nav>
 </header>
 
 <main class="layout">
@@ -13,7 +11,19 @@
 
   <aside class="panel">
     @if (modo() === 'gestion') {
-      <bv-gestion [incidencias]="gestion()" [calles]="calles()" (cambiar)="cambiarEstado($event)" />
+      @if (auth.token()) {
+        <div class="row between">
+          <span class="hint small">{{ auth.email() }}</span>
+          <button class="btn small" (click)="auth.salir()">Salir</button>
+        </div>
+        <bv-gestion [incidencias]="gestion()" [calles]="calles()" (cambiar)="cambiarEstado($event)" />
+      } @else {
+        <div class="eyebrow">Panel de la junta</div>
+        <h2>Inicia sesión</h2>
+        @if (noAutorizado()) { <div class="nota">Esta cuenta de Google no está autorizada como junta.</div> }
+        <p class="hint">Solo las cuentas de Google autorizadas por la junta pueden gestionar incidencias.</p>
+        <div #botonGoogle></div>
+      }
     } @else if (enviada(); as i) {
       <div class="eyebrow">Enviada</div>
       <h2>Gracias, ya está en el mapa</h2>

@@ -14,5 +14,6 @@ builder.Services.AddSingleton(_ =>
     return new TableClient(conn, IncidenciaEntity.Tabla);
 });
 builder.Services.AddSingleton<IncidenciasRepo>();
+builder.Services.AddSingleton<Urba.Api.Functions.AuthGoogle>();
 
 builder.Build().Run();

@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { AfterViewInit, Component, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
 import { RADIO_CALLE, farolaMasCercana, posibleDuplicado, tramoMasCercano } from './geo';
 import { Gestion } from './gestion';
+import { GoogleAuth } from './google-auth';
 import { IncidenciasApi } from './incidencias-api';
 import {
   DatosMapa, ESTADOS, Estado, Incidencia, LISTA_TIPOS, NuevaIncidencia, TIPOS, Tipo, abierta,
@@ -22,7 +23,10 @@ const COLOR_CALLE = '#7a8ca8';
 })
 export class App implements AfterViewInit, OnDestroy {
   private readonly api = inject(IncidenciasApi);
+  protected readonly auth = inject(GoogleAuth);
   private readonly mapaEl = viewChild.required<ElementRef<HTMLDivElement>>('mapa');
+  private readonly botonGoogle = viewChild<ElementRef<HTMLDivElement>>('botonGoogle');
+  private readonly googleClientId = signal<string | null>(null);
 
   private map?: L.Map;
   private capaTramos = L.layerGroup();
@@ -32,8 +36,8 @@ export class App implements AfterViewInit, OnDestroy {
   private datos: DatosMapa = { farolas: [], tramos: [] };
   private temporizadorAviso?: ReturnType<typeof setTimeout>;
 
-  protected readonly esAdmin = signal(false);
-  protected readonly modo = signal<'vecino' | 'gestion'>('vecino');
+  protected readonly modo = signal<'vecino' | 'gestion'>(location.pathname.startsWith('/gestion') ? 'gestion' : 'vecino');
+  protected readonly noAutorizado = signal(false);
   protected readonly incidencias = signal<Incidencia[]>([]);
   protected readonly gestion = signal<Incidencia[]>([]);
   protected readonly borrador = signal<NuevaIncidencia | null>(null);
@@ -65,6 +69,21 @@ export class App implements AfterViewInit, OnDestroy {
       const inc = this.visibles();
       if (this.map) this.dibujar(inc);
     });
+    // Pinta el botón de Google cuando aparece su hueco en el panel de gestión.
+    effect(() => {
+      const el = this.botonGoogle()?.nativeElement;
+      const clientId = this.googleClientId();
+      if (el && clientId) {
+        this.auth.pintarBoton(el, clientId).catch((e: Error) => this.mostrarAviso(e.message));
+      }
+    });
+    // Al iniciar sesión (o cerrarla) en modo gestión, recarga.
+    effect(() => {
+      const token = this.auth.token();
+      untracked(() => {
+        if (token && this.modo() === 'gestion' && this.map) void this.recargar();
+      });
+    });
   }
 
   async ngAfterViewInit() {
@@ -79,9 +98,9 @@ export class App implements AfterViewInit, OnDestroy {
       this.map!.fitBounds(L.latLngBounds(this.datos.farolas.map((f) => [f.lat, f.lon] as L.LatLngTuple)).pad(0.15));
     }
 
-    const admin = await this.api.esAdmin();
-    this.esAdmin.set(admin);
-    if (admin && location.pathname.startsWith('/gestion')) this.modo.set('gestion');
+    try {
+      this.googleClientId.set((await this.api.config()).googleClientId);
+    } catch { /* sin API: el login de gestión no estará disponible */ }
     await this.recargar();
   }
 
@@ -93,9 +112,17 @@ export class App implements AfterViewInit, OnDestroy {
 
   protected async recargar() {
     try {
-      if (this.modo() === 'gestion') this.gestion.set(await this.api.listarGestion());
+      if (this.modo() === 'gestion' && this.auth.token()) {
+        this.noAutorizado.set(false);
+        this.gestion.set(await this.api.listarGestion());
+      }
       this.incidencias.set(await this.api.listar());
     } catch (e) {
+      if (e instanceof HttpErrorResponse && e.status === 403) {
+        this.noAutorizado.set(true);
+        this.auth.salir();
+        return;
+      }
       this.mostrarAviso('No se pudieron cargar las incidencias' + this.detalle(e));
     }
     this.dibujar(this.visibles());
