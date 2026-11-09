@@ -1,6 +1,6 @@
 {
   "platform": {
-    "apiRuntime": "dotnet-isolated:10.0"
+    "apiRuntime": "node:22"
   },
   "navigationFallback": {
     "rewrite": "/index.html",

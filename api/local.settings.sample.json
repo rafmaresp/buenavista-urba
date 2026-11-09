@@ -2,7 +2,7 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
     "TablesConnection": "UseDevelopmentStorage=true",
     "GOOGLE_CLIENT_ID": "xxxxxxxx.apps.googleusercontent.com",
     "ADMIN_EMAILS": "tu.correo@gmail.com"

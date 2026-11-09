@@ -11,7 +11,7 @@ declare global { interface Window { google?: { accounts: { id: GsiId } } } }
 
 const CLAVE = 'bv1_google_token';
 
-/** Login de la junta con Google. El ID token se valida en la API (Google.Apis.Auth). */
+/** Login de la junta con Google. El ID token se valida en la API (google-auth-library). */
 @Injectable({ providedIn: 'root' })
 export class GoogleAuth {
   readonly token = signal<string | null>(this.leerGuardado());

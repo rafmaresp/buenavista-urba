@@ -19,12 +19,12 @@ Web para que los vecinos de la urbanización Buenavista I (Dos Hermanas, Sevilla
 
 ## Restricciones de coste (decisión de Rafa, 2026-11-09)
 - Objetivo: **0–1 €/mes**. SWA plan **Free** con Functions gestionadas, Table Storage. **Nada de plan Standard** ni servicios de pago sin aprobación explícita.
-- Login de la junta con **Google Identity Services** en Angular; la Function valida el ID token con `Google.Apis.Auth` (audiencia = `GOOGLE_CLIENT_ID`) y comprueba el email contra `ADMIN_EMAILS`. No usar la auth integrada de SWA (Google como proveedor exige Standard).
+- Login de la junta con **Google Identity Services** en Angular; la Function valida el ID token con `google-auth-library` (audiencia = `GOOGLE_CLIENT_ID`) y comprueba el email contra `ADMIN_EMAILS`. No usar la auth integrada de SWA (Google como proveedor exige Standard).
 - El token viaja en la cabecera `X-Urba-Token` (no `Authorization`, para que SWA no la toque).
 
 ## Estructura
 - `web/` Angular (standalone, signals, zoneless) + Leaflet. Datos estáticos del mapa en `web/public/datos/buenavista.json` (69 farolas F01–F70 sin F62, 7 tramos).
-- `api/` Azure Functions .NET 10 isolated (ASP.NET Core integration) + Azure Table Storage (`Azure.Data.Tables`).
+- `api/` Azure Functions **Node 22 + TypeScript** (modelo de programación v4, `@azure/functions`) + Azure Table Storage (`@azure/data-tables`). Decisión de Rafa (2026-11-09): todo el proyecto en Node/TS, sin .NET.
 - `web/public/staticwebapp.config.json` runtime de la API y fallback SPA. La autorización está en la API, no en SWA.
 - `data/` KML/CSV originales de farolas. `prototipo/` prototipo HTML de referencia (no se despliega).
 - Precisión de farolas: verificadas ±2–3 m, estimadas ±5–8 m.
@@ -42,12 +42,13 @@ Web para que los vecinos de la urbanización Buenavista I (Dos Hermanas, Sevilla
 Nota: en Azure Functions el prefijo de ruta `admin` está reservado; por eso es `gestion`.
 
 ## Desarrollo local
-- Azurite para Table Storage (`UseDevelopmentStorage=true`), `func start` en `api/`, `npm start` en `web/`, o todo junto con `swa start`.
+- Azurite para Table Storage (`UseDevelopmentStorage=true`), `npm start` en `api/` (necesita Azure Functions Core Tools), `npm start` en `web/`, o todo junto con `swa start`.
 - Copia `api/local.settings.sample.json` a `api/local.settings.json` y rellena `GOOGLE_CLIENT_ID` y `ADMIN_EMAILS`. En Google Cloud Console, el client ID OAuth (tipo Web) debe tener como orígenes autorizados `http://localhost:4280` y la URL de SWA.
 - App settings en Azure (SWA → Configuration): `TablesConnection`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`.
 
 ## Convenciones para agentes
 - Una tarea = una rama `claude/<tema>` = un PR pequeño. Nada directo a `main`.
-- Antes de push: `npm run build` en `web/` y `dotnet build` en `api/` (si el entorno no tiene npm/.NET, lo valida el workflow `ci.yml`).
+- Antes de push: `npm run build` en `web/` y en `api/` (si el entorno no tiene npm, lo valida el workflow `ci.yml`).
+- Entorno cloud de agentes: "buenavista-urba" (npm/PyPI + GitHub). El "Default" no tiene red.
 - No añadir dependencias ni servicios de pago sin decirlo en el PR con su coste.
 - Secretos solo en GitHub Secrets / app settings de Azure. Nunca en el repo.

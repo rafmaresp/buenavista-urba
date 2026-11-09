@@ -2,10 +2,8 @@
 node_modules/
 web/dist/
 web/.angular/
-# .NET
-bin/
-obj/
-*.user
+# API
+api/dist/
 api/local.settings.json
 # Azurite / SWA CLI
 __azurite_*
