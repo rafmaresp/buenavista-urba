@@ -1,0 +1,19 @@
+# Node / Angular
+node_modules/
+web/dist/
+web/.angular/
+# .NET
+bin/
+obj/
+*.user
+api/local.settings.json
+# Azurite / SWA CLI
+__azurite_*
+__blobstorage__/
+__queuestorage__/
+.swa/
+# OS / IDE
+.DS_Store
+.vs/
+.vscode/*
+!.vscode/extensions.json
