@@ -6,6 +6,11 @@ How to decide who handles what.
 
 | Work Type | Route To | Examples |
 |-----------|----------|----------|
+| Arquitectura, OpenSpec (proposal/design/tasks), ADRs, triaje, revisión de PRs | Cuesta | proponer cambio, decidir trade-off, revisar PR |
+| Angular, Leaflet, mapa (PNOA/OSM), UI, Google Identity Services en cliente | Mauri | capa de farolas, formulario de incidencia, panel admin |
+| Azure Functions Node/TS, Table/Blob Storage, validación de ID token, correo, SWA config, CI/CD | Emilio | endpoint, modelo de tabla, workflow de despliegue |
+| Tests (unit, integración, e2e), criterios de aceptación, regresiones | Marisa | tests del endpoint, casos de duplicado, e2e del mapa |
+| RGPD, datos personales, contenido para vecinos | Rai (+ Cuesta) | revisión de datos mínimos |
 
 Preset installation adds concrete routes for the configured team. Add or edit rows
 here only when their agent names also exist in the casting registry.
@@ -33,3 +38,12 @@ here only when their agent names also exist in the casting registry.
 5. **"Team, ..." → fan-out.** Spawn all relevant agents in parallel as `mode: "background"`.
 6. **Anticipate downstream work.** If a feature is being built, spawn the tester to write test cases from requirements simultaneously.
 7. **Issue-labeled work** — when a `squad:{member}` label is applied to an issue, route to that member. The Lead handles all `squad` (base label) triage.
+
+## Work Type → Agent
+
+| Work Type | Primary | Secondary |
+|-----------|---------|----------|
+| Lead / Architect | Cuesta | — |
+| Frontend Developer | Mauri | — |
+| Backend Developer | Emilio | — |
+| Test Engineer | Marisa | — |

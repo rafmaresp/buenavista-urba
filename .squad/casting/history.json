@@ -1,6 +1,52 @@
 {
-  "universe_usage_history": [],
-  "assignment_cast_snapshots": {},
-  "transaction_id": "98b0bcdb-6cca-44f1-ad0c-e8945600c349",
-  "registry_revision": 1
+  "assignment_cast_snapshots": {
+    "cli-cast-r2-2026-11-11T23:10:09.473Z": {
+      "created_at": "2026-11-11T23:10:09.473Z",
+      "agents": [
+        "cuesta"
+      ],
+      "universe": "cli-cast"
+    },
+    "cli-cast-r3-2026-11-11T23:10:09.670Z": {
+      "created_at": "2026-11-11T23:10:09.670Z",
+      "agents": [
+        "mauri"
+      ],
+      "universe": "cli-cast"
+    },
+    "cli-cast-r4-2026-11-11T23:10:09.866Z": {
+      "created_at": "2026-11-11T23:10:09.866Z",
+      "agents": [
+        "emilio"
+      ],
+      "universe": "cli-cast"
+    },
+    "cli-cast-r5-2026-11-11T23:10:10.064Z": {
+      "created_at": "2026-11-11T23:10:10.064Z",
+      "agents": [
+        "marisa"
+      ],
+      "universe": "cli-cast"
+    }
+  },
+  "universe_usage_history": [
+    {
+      "universe": "cli-cast",
+      "used_at": "2026-11-11T23:10:09.473Z"
+    },
+    {
+      "universe": "cli-cast",
+      "used_at": "2026-11-11T23:10:09.670Z"
+    },
+    {
+      "universe": "cli-cast",
+      "used_at": "2026-11-11T23:10:09.866Z"
+    },
+    {
+      "universe": "cli-cast",
+      "used_at": "2026-11-11T23:10:10.064Z"
+    }
+  ],
+  "transaction_id": "80a6d16f-42e2-4e6f-8257-c506d2f47976",
+  "registry_revision": 5
 }

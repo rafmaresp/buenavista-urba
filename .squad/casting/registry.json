@@ -1,8 +1,45 @@
 {
   "schema": "squad-agent-provenance/v1",
   "schema_version": 1,
-  "revision": 1,
-  "generated_at": "1970-01-01T00:00:00.000Z",
-  "agents": {},
-  "transaction_id": "98b0bcdb-6cca-44f1-ad0c-e8945600c349"
+  "revision": 5,
+  "generated_at": "2026-11-11T23:10:10.064Z",
+  "agents": {
+    "cuesta": {
+      "display_name": "Cuesta",
+      "persistent_name": "Cuesta",
+      "role": "Lead / Architect",
+      "universe": "cli-cast",
+      "status": "active",
+      "created_at": "2026-11-11T23:10:09.473Z",
+      "updated_at": "2026-11-11T23:10:09.473Z"
+    },
+    "mauri": {
+      "display_name": "Mauri",
+      "persistent_name": "Mauri",
+      "role": "Frontend Developer",
+      "universe": "cli-cast",
+      "status": "active",
+      "created_at": "2026-11-11T23:10:09.670Z",
+      "updated_at": "2026-11-11T23:10:09.670Z"
+    },
+    "emilio": {
+      "display_name": "Emilio",
+      "persistent_name": "Emilio",
+      "role": "Backend Developer",
+      "universe": "cli-cast",
+      "status": "active",
+      "created_at": "2026-11-11T23:10:09.866Z",
+      "updated_at": "2026-11-11T23:10:09.866Z"
+    },
+    "marisa": {
+      "display_name": "Marisa",
+      "persistent_name": "Marisa",
+      "role": "Test Engineer",
+      "universe": "cli-cast",
+      "status": "active",
+      "created_at": "2026-11-11T23:10:10.064Z",
+      "updated_at": "2026-11-11T23:10:10.064Z"
+    }
+  },
+  "transaction_id": "80a6d16f-42e2-4e6f-8257-c506d2f47976"
 }
