@@ -6,12 +6,6 @@
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
       "computedHash": "7bc223e2aafbdbf6e50ea243ba6ef67fe432bb069ab439fea0390795dac0bf7f"
-    },
-    "platform-onboard": {
-      "source": "PlainConceptsPlatform/foundations",
-      "sourceType": "github",
-      "skillPath": "skills/platform-onboard/SKILL.md",
-      "computedHash": "c97fb4b56490a3b0a9c7a3b95f921740dd442cd9d48965558c91bb7f028cffd8"
     }
   }
 }
