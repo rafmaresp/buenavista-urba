@@ -27,6 +27,13 @@
         "marisa"
       ],
       "universe": "cli-cast"
+    },
+    "cli-cast-r6-2026-11-11T23:48:25.349Z": {
+      "created_at": "2026-11-11T23:48:25.349Z",
+      "agents": [
+        "belen"
+      ],
+      "universe": "cli-cast"
     }
   },
   "universe_usage_history": [
@@ -45,8 +52,12 @@
     {
       "universe": "cli-cast",
       "used_at": "2026-11-11T23:10:10.064Z"
+    },
+    {
+      "universe": "cli-cast",
+      "used_at": "2026-11-11T23:48:25.349Z"
     }
   ],
-  "transaction_id": "80a6d16f-42e2-4e6f-8257-c506d2f47976",
-  "registry_revision": 5
+  "transaction_id": "8b85b401-5825-42f5-b0c9-f92002ccd11d",
+  "registry_revision": 6
 }

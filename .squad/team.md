@@ -16,6 +16,7 @@
 | Mauri | Frontend Developer | `.squad/agents/mauri/charter.md` | ✅ Active |
 | Emilio | Backend Developer | `.squad/agents/emilio/charter.md` | ✅ Active |
 | Marisa | Test Engineer | `.squad/agents/marisa/charter.md` | ✅ Active |
+| Belen | UI/UX Designer | `.squad/agents/belen/charter.md` | ✅ Active |
 
 ## Project Context
 

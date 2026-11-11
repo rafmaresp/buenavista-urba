@@ -47,3 +47,4 @@ here only when their agent names also exist in the casting registry.
 | Frontend Developer | Mauri | — |
 | Backend Developer | Emilio | — |
 | Test Engineer | Marisa | — |
+| UI/UX Designer | Belen | — |
