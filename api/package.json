@@ -5,7 +5,7 @@
   "description": "API de Buenavista I · Incidencias (Azure Functions v4, Node 22)",
   "main": "dist/functions/*.js",
   "engines": {
-    "node": "^22.22.3"
+    "node": "^22.22.3 || ^24.15.0"
   },
   "scripts": {
     "build": "tsc",
