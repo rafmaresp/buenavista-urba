@@ -1,6 +1,6 @@
 # Proyecto: Buenavista I · Incidencias
 
-Contexto de producto para OpenSpec. Fuente: decisiones de Rafa del 2026-11-12 (`.squad/decisions/inbox/`). Las propuestas de cambio (`openspec/changes/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
+Contexto de producto para OpenSpec. Fuente: decisiones de Rafa del 2026-11-12 (`.squad/decisions/inbox/`) y la propuesta RGPD de Rai (`.squad/rai/propuesta-rgpd-v1.md`). Las propuestas de cambio (`openspec/changes/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
 
 ## Propósito
 
@@ -10,107 +10,103 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 
 | Rol | Quién | Puede |
 |---|---|---|
-| **Comunero** | Vecino con cuenta de Google | Ver el mapa de farolas y las incidencias abiertas; crear una incidencia sobre una farola (con un comentario opcional); votar +1 en una incidencia abierta |
-| **Directiva** | Comunero que está en la lista de la directiva | Todo lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas y reubicarlas |
-| **Devs** | Equipo técnico (fuera de la app) | Cargar altas y bajas de farolas a petición de Rafa; consultar la auditoría |
+| **Visitante** | Cualquiera, sin iniciar sesión | Ver el mapa de farolas y las incidencias abiertas (farola, estado, fecha, votos; sin autor ni comentario). Nada más |
+| **Comunero** | Email en la lista cerrada con rol comunero | Lo del visitante, más: crear una incidencia sobre una farola (comentario opcional) y votar +1 en una incidencia abierta |
+| **Directiva** | Email en la lista cerrada con rol directiva | Lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas y reubicarlas |
+| **Devs** | Equipo técnico (fuera de la app) | Cargar farolas y la lista cerrada a petición de Rafa; consultar la auditoría; atender supresiones |
 
-- **Login con Google para todos**: Google Identity Services en Angular; el ID token se valida en **cada** Function con `google-auth-library`. Sin auth de SWA (es de pago en Standard). Coste 0 €.
-- La pertenencia a la directiva se determina por una lista de emails (mecanismo pendiente, ver "Pendiente").
+- **Mapa público en solo lectura**; **toda acción requiere login con Google y estar en la lista cerrada**.
+- **Login con Google**: Google Identity Services en Angular, cargado solo en la pantalla de login; el ID token se valida en **cada** Function con `google-auth-library` y se exige `email_verified`. Sin auth de SWA. Coste 0 €.
+- **Lista cerrada = tabla `Usuarios`** (PK `uid` UUID v4 aleatorio; `email` normalizado, `sub` fijado en el primer login, `rol`, `estado` activo/baja/suprimido). Es la única correspondencia uid ↔ persona. La mantienen los devs; el rol directiva solo se cambia a petición documentada del presidente; todo auditado. El `estado` se comprueba en cada petición.
+- **No autorizado**: 403 genérico, sin guardar su email ni en logs. Puede **solicitar acceso** (envía voluntariamente su email; ver "Pendiente" 1).
 - El rol se decide siempre en el servidor; el front solo oculta o muestra controles.
 
 ## Funcionalidades de la v1 y reglas de negocio
 
 ### 1. Mapa de farolas
-- Mapa Leaflet con capas base Ortofoto PNOA (IGN, por defecto) y Callejero OSM, con su atribución. Nada de Google Maps.
+- Mapa Leaflet con capas base Ortofoto PNOA (IGN, por defecto) y Callejero OSM, con su atribución. Nada de Google Maps. Librerías y fuentes autohospedadas.
 - Una marca por farola (70, `F01`–`F70`). Al tocarla: identificador, calle e incidencia abierta si la hay.
-- **El comunero no ve la precisión** de la posición (verificada / estimada / inferida): es un dato interno. La API no la envía a quien no sea de la directiva.
+- **La precisión de la posición es interna**: la API solo la envía a la directiva.
+- `GET /api/farolas` es anónimo y cacheable en la CDN de la SWA.
 
 ### 2. Reportar incidencia de farola
-- Solo se reporta sobre **elementos habilitados** (en v1, farolas del catálogo), nunca sobre un punto libre del mapa.
-- Requiere login. Datos: farola, comentario opcional (texto corto, solo al crear), autor y fecha.
-- **Duplicados**: una farola con una incidencia abierta (Nuevo o En curso) muestra esa incidencia y **no admite otra**. La garantía es del servidor (escritura condicional), no del front.
-- Cuando la incidencia pasa a Completado, la farola vuelve a admitir incidencias nuevas.
+- Solo sobre **elementos habilitados** (en v1, farolas del catálogo), nunca sobre un punto libre.
+- Datos: farola, comentario opcional (texto plano, ≤ 280 caracteres, solo al crear, con aviso de no escribir datos de terceros), autor (`uid`) y fecha.
+- **Duplicados**: una farola con una incidencia abierta (cualquier estado salvo Completado) muestra esa incidencia y **no admite otra**. Lo garantiza el servidor (escritura condicional).
+- **Comentario**: visible solo para la directiva y el autor (recomendación de Rai, pendiente de Rafa). La API nunca devuelve el autor a comuneros ni visitantes.
 
 ### 3. Voto +1 ("a mí también")
-- El comunero puede votar +1 en una incidencia abierta para darle prioridad.
-- **Un voto por usuario e incidencia** (idempotente: votar dos veces no suma dos).
-- No se puede votar una incidencia Completada.
+- Un voto por usuario e incidencia (idempotente), solo en incidencias abiertas. La API devuelve el recuento y "has votado", nunca quién votó.
 
-### 4. Ver incidencias
-- El comunero ve las incidencias **abiertas** (en el mapa y en una lista) con su farola, estado, fecha y número de votos. No ve quién las creó ni quién votó.
-- **Sin hilo de comentarios**: el único comentario es el de creación.
+### 4. Ciclo de estados (solo la directiva)
+1. **Nuevo**: la directiva aún no la ha revisado.
+2. **Recibido**: la directiva la ha revisado.
+3. **Profesional notificado**: se ha avisado al profesional o empresa; la directiva puede poner una **fecha estimada** de resolución (opcional).
+4. **Completado**: la farola vuelve a admitir incidencias.
 
-### 5. Gestión (directiva)
-- Panel con todas las incidencias, filtrable por estado y ordenable por votos y antigüedad.
-- Solo la directiva cambia el estado: **Nuevo → En curso → Completado** (también Nuevo → Completado). *Propuesta a confirmar*: no se reabre una Completada; si la farola vuelve a fallar, se crea una incidencia nueva.
+- Transiciones validadas en servidor. *Propuesta a confirmar*: solo hacia delante (se puede saltar estados) y no se reabre una Completada; si la farola vuelve a fallar, incidencia nueva.
+- Panel de gestión: todas las incidencias, filtro por estado, orden por votos y antigüedad. La directiva puede ocultar un comentario (auditado sin copiar el texto).
 
-### 6. Reubicar farola (directiva)
-- La directiva ve la precisión de cada farola y puede mover su posición desde la app; la nueva posición puede marcarse como verificada (*propuesta a confirmar*).
-- **No hay historial de posiciones en la app**: el histórico queda solo en la auditoría.
-- La directiva **no** da de alta ni de baja farolas ni edita nombres de calle.
+### 5. Reubicar farola (directiva)
+- Mueve la posición y fija su precisión. Sin historial en la app (solo en la auditoría). La directiva **no** da de alta ni de baja farolas ni edita calles.
 
-### 7. Avisos por correo
-- A la **directiva**, al crearse una incidencia.
-- Al **comunero autor**, cuando cambia el estado de su incidencia.
-- Un fallo de envío no deshace ni bloquea la operación; se registra y se reintenta o se descarta (detalle en el cambio de correo).
+### 6. Avisos por correo
+- Al **correo de la directiva** (buzón de la comunidad) al crearse una incidencia.
+- Al **comunero autor** en **cada cambio de estado** de su incidencia (no a usuarios de baja).
+- Contenido mínimo: farola, estado, enlace; sin comentario. El email se lee de `Usuarios` al enviar y no se copia a colas, incidencias ni auditoría. Un fallo de envío no bloquea la operación.
 
-### 8. Auditoría de todo
-- Toda escritura (incidencias, votos, estados, posiciones de farola, cargas de datos de los devs) genera una entrada de auditoría: **quién, qué, cuándo, valor anterior y valor nuevo**.
-- La auditoría es de solo añadir (append-only) y se escribe en la misma operación que el cambio; si no se puede auditar, el cambio no se hace.
-- En v1 la auditoría no se consulta desde la app; la consultan los devs.
+### 7. Auditoría de todo
+- Toda escritura genera una entrada: quién, qué, cuándo, antes y después. Append-only, en la misma operación; si no se puede auditar, no se escribe.
+- `actor` = `uid`, `sistema:*` o `dev:<alias>`. **Prohibido en antes/después**: email, `sub`, nombre y texto del comentario (se audita `{presente, longitud}`), con test.
+- `PartitionKey = AAAA-MM` para purgar por meses. La consultan los devs; no hay vista en la app.
+
+### 8. RGPD (mínimos de la v1, propuesta de Rai)
+- Cláusula informativa en dos capas: capa 1 en el login antes del botón de Google; capa 2 en `/privacidad`.
+- Registro de actividades y nota de umbral de EIPD versionados en el repo.
+- Supresión a cargo de los devs (≤ 1 mes): vaciar email y `sub`, `estado = suprimido`, autor nulo en incidencias y votos; entrada de auditoría sin datos personales.
+- Logs sin email, tokens ni cuerpos. Sin cookies de rastreo ni analítica. Todos los recursos en región UE.
 
 ## Detrás de feature flag (v1)
 
-- **Baches**: reportar baches sobre las calles (tramos habilitados). Se desarrolla en v1 pero se despliega **apagado**; Rafa decide cuándo activarlo. Sus reglas (cómo se ubica un bache sobre un tramo, duplicados por cercanía) se concretan en su propio cambio.
+- **Baches**: se desarrolla en v1 y se despliega **apagado**; Rafa decide cuándo activarlo. Reglas en su propio cambio.
 
 ## v2 / futuro
 
-- Zonas de **maleza** (solo dentro de zonas marcadas).
-- **Incidencia libre** sobre las calles.
-- **Capa de redes** (solo directiva).
-- **Fotos** en las incidencias (Blob Storage).
+Zonas de **maleza**, **incidencia libre** sobre las calles, **capa de redes** (solo directiva), **fotos** (Blob Storage; se decide al llegar y se reevalúa la EIPD).
 
 ## Fuera de alcance (explícito)
 
-- **WhatsApp en cualquier forma**: ni API ni enlaces `wa.me`.
-- Que el comunero vea la precisión de las farolas.
-- Hilo de comentarios o respuestas en una incidencia.
-- Historial de posiciones de farola visible en la app.
-- Alta o baja de farolas y edición de calles desde la app.
-- Reportar en un punto libre del mapa.
+- **WhatsApp en cualquier forma** (ni API ni `wa.me`).
+- Precisión de farolas visible para quien no sea directiva; hilo de comentarios; historial de posiciones en la app; alta/baja de farolas y edición de calles desde la app; reportar en un punto libre.
+- Previews de PR en la SWA.
 
 ## Datos de referencia
 
-- **Farolas**: la posición vigente vive en **Table Storage**; `data/farolas_buenavista.csv` es la **semilla** (carga inicial idempotente). Inventario: 70 farolas `F01`–`F70` sin huecos.
-- **F62**: existe pero no tiene coordenadas en ninguna fuente. Se siembra **inferida** en el punto medio entre F61 y F63 (37.3154785, −5.9617603, calle "C. H / C. Q (por confirmar)", precisión `inferida`, ±20 m), según la decisión del 2026-11-12. Afinar en campo no bloquea.
-- **Altas y bajas**: Rafa las pide y las cargan los devs (fila en el CSV + carga), con su entrada de auditoría.
-- **Calles**: no editables.
-- **Reubicar**: solo la directiva, auditado.
-- El front obtiene las farolas de `GET /api/farolas` (no de un JSON estático), porque la directiva puede cambiar posiciones.
+- **Farolas**: la posición vigente vive en la tabla `Farolas`; `data/farolas_buenavista.csv` es la **semilla** (carga idempotente). Inventario: 70 farolas `F01`–`F70` sin huecos.
+- **F62**: sin coordenadas en ninguna fuente; se siembra **inferida** en el punto medio F61–F63 (37.3154785, −5.9617603, calle "C. H / C. Q (por confirmar)", ±20 m).
+- **Altas y bajas**: las pide Rafa y las cargan los devs, auditadas. **Calles**: no editables.
+
+## Estrategia de pruebas
+
+Todas las pruebas corren en la CI; **sin previews de PR** por ahora.
+- **Unitarias** con Vitest en cada cambio (`web/` y `api/`).
+- **Integración de la API** contra Azurite en la CI desde el cambio 2.
+- **e2e** con Playwright contra la CLI de SWA (`swa start`) más Azurite desde el cambio 3; el cambio 5 los amplía al flujo de reportar.
+- **Usuarios de prueba** para el e2e: solo en el emulador y **bloqueados en producción**; se diseñan en el cambio 4 y los revisa Rai.
 
 ## Restricciones
 
-- **Coste 0–1 €/mes**. Cualquier recurso de pago, aunque sea por uso y cueste céntimos (cuenta de Storage, Azure Communication Services, Application Insights…), se consulta con Rafa **antes** de crearlo.
-- **RGPD con datos mínimos**: de cada usuario se guarda lo imprescindible (identificador de Google `sub` y email para avisos); sin cookies de rastreo ni analítica. El comentario libre puede contener datos personales: se avisa en el formulario.
-- **Stack cerrado** (no se reabre): Angular + Leaflet (PNOA + OSM) · Azure Functions Node 22 + TypeScript con `@azure/data-tables` y `google-auth-library` (sin .NET) · Table Storage (+ Blob para fotos en el futuro) · Static Web Apps Free · login Google Identity Services validado en la Function.
+- **Coste 0–1 €/mes**. Ningún recurso de Azure se crea sin el presupuesto de 1 €/mes y el corte automático del cambio `infra-bicep`. Cualquier recurso de pago, aunque cueste céntimos, se consulta con Rafa antes.
+- **Infraestructura como código** con Bicep, desplegada desde GitHub con OIDC (sin secretos de larga duración en el repo).
+- **Stack cerrado**: Angular + Leaflet (PNOA + OSM) · Azure Functions Node 22 + TypeScript (gestionadas por la SWA) con `@azure/data-tables` y `google-auth-library` · **Azure Cosmos DB for Table** con nivel gratuito (`enableFreeTier`, 1000 RU/s y 25 GB), tope de cuenta `totalThroughputLimit = 1000` y capacidad compartida entre tablas; Azurite en local · Static Web Apps Free · región UE.
+- Sin funciones de pago en Cosmos (multirregión, backup continuo, almacén analítico). Una sola cuenta con nivel gratuito por suscripción: se comprueba antes de desplegar.
+- **Contra el abuso**: escrituras solo con login y lista cerrada, con límite de peticiones por usuario; datos accesibles solo desde las Functions; el tope de RU/s convierte un abuso en errores 429, no en factura.
 - **Proceso**: OpenSpec (proponer → revisión de Rafa → aplicar → archivar), un PR por cambio, Rafa revisa y fusiona.
 
 ## Pendiente
 
-1. **Seudonimización en la auditoría (para Rai)**: el derecho de supresión choca con una auditoría append-only que guarda emails. Propuesta a evaluar: la auditoría guarda un seudónimo estable (p. ej. HMAC del `sub` con una clave secreta) y la tabla de usuarios hace de única correspondencia seudónimo ↔ email; suprimir a un usuario = borrar su fila. Falta también fijar el plazo de conservación. **Bloquea el cambio de login** (primer actor personal en la auditoría).
-2. **Lista de la directiva**: cómo se mantiene. Opciones: (a) app setting `DIRECTIVA_EMAILS` en la SWA (simple, 0 €; cada cambio lo hace un dev en el portal y no queda auditado salvo que se registre aparte); (b) tabla en Storage cargada por los devs como las farolas (auditado, mismo flujo que altas y bajas); (c) gestión desde la app por la propia directiva (más alcance y más riesgo). **Bloquea el cambio de login.**
-3. **Proveedor de correo con coste 0** (no decidido):
-
-   | Opción | Coste | A favor | En contra |
-   |---|---|---|---|
-   | Azure Communication Services Email | Pago por uso (céntimos al mes con este volumen) | Mismo proveedor que el resto; sin cuentas de terceros | Es un **recurso de pago** (requiere consulta); con el dominio gestionado por Azure el remitente es `DoNotReply@…azurecomm.net` y los límites son bajos; dominio propio exige DNS |
-   | Brevo (capa gratuita) | 0 € (≈300 correos/día) | Empresa de la UE, DPA estándar; API HTTP sencilla | Cuenta de terceros; marca en el pie en el plan gratuito; verificar remitente |
-   | Mailjet (capa gratuita) | 0 € (≈200/día, 6.000/mes) | Empresa de la UE; API HTTP | Mismos inconvenientes de cuenta externa; límites diarios bajos |
-   | Resend (capa gratuita) | 0 € (≈100/día, 3.000/mes) | API muy simple | Empresa de EE. UU. (transferencia internacional en el RGPD); exige dominio verificado |
-   | SMTP de una cuenta Gmail de la comunidad | 0 € | Sin proveedor nuevo | Credencial de una cuenta personal o compartida en la app; límites y reglas de Google para envío automatizado; poco robusto |
-
-   Los límites de las capas gratuitas cambian: hay que verificarlos al decidir. **Bloquea el cambio de correo.**
-4. **Coordenadas reales de F62**: de momento inferidas (punto medio F61–F63, ±20 m). Rafa las toma en campo; corregirlas es una carga de datos de los devs (o una reubicación de la directiva).
-5. **¿Cualquier cuenta de Google es comunero?** Hoy sí: cualquiera que inicie sesión puede reportar y votar. Alternativa: lista de comuneros o código de la comunidad. Afecta a abuso y a RGPD. Decidir antes del cambio de reportar.
-6. **¿El mapa es público sin login?** Propuesta: farolas visibles sin login (no son datos personales); incidencias y votos solo con login. Decidir antes del cambio de mapa.
-7. **Cuenta de Storage**: Table Storage requiere una cuenta de Storage (pago por uso, céntimos al mes). Necesita la aprobación de Rafa **antes del cambio de catálogo**.
+1. **Solicitudes de acceso**: ¿quién las aprueba, la directiva desde la app o los devs a petición de Rafa? Rai fija el plazo de conservación de las rechazadas. **Bloquea el cambio 4b.**
+2. **Preguntas RGPD de Rai para Rafa** (bloquean el cambio 4): quién firma como responsable y el encargo a Rafa y los devs; origen de la lista y si entran inquilinos; plazos 30 días / 12 meses / 3 años; visibilidad del comentario; qué ve la directiva del autor. Lo marcado VALIDAR, a revisar por un profesional.
+3. **Proveedor de correo** (lo más barato y sencillo, con DPA; Rai descarta Gmail personal). Destinatario: el correo de la directiva. Falta ver si ese buzón puede ser también el remitente (Gmail API) y si eso cumple el criterio de DPA. Opciones: ACS Email (de pago por uso, consultar), Brevo o Mailjet (UE, capa gratuita), Resend (EE. UU.). **Bloquea el cambio 9.**
+4. **Coordenadas reales de F62**: las toma Rafa en campo; corregirlas es una carga de los devs o una reubicación.
+5. **Capacidad compartida de Cosmos for Table**: Bicep no la declara; se verifica en el cambio 1b (ver su diseño). Si no se puede, el modelo de tablas del cambio 2 cambia.
