@@ -1,0 +1,29 @@
+# Roadmap de cambios hasta la v1
+
+Un cambio OpenSpec = un PR. Tamaños: **S** ≈ < 300 líneas de diff sin lockfiles, **M** ≈ 300–700, **L** > 700 (se parte antes de empezar). Contexto de producto en [`project.md`](project.md).
+
+| # | Cambio | Objetivo | Alcance | Depende de | Tamaño |
+|---|---|---|---|---|---|
+| 1 | `scaffold-plataforma` (aprobado) | Base compilable, probada y desplegable a 0 € | `web/` Angular vacío, `api/` Functions Node 22/TS con `GET /api/health`, CI, `azure-swa.yml`, README y comandos de `AGENTS.md`. Sin datos, sin Leaflet, sin previews de PR. | — | S |
+| 1b | `infra-bicep` | Recursos de Azure como código, con tope de coste | Bicep: SWA Free, Cosmos DB for NoSQL (nivel gratuito, tope 1000 RU/s, base de datos con 1000 RU/s compartidas, sin contenedores), presupuesto de 1 €/mes con avisos y corte automático al 100 %, comprobación de nivel gratuito, `infra.yml` con OIDC (`what-if` + deploy manual); `azure-swa.yml` obtiene el token por OIDC. | 1 · pasos únicos de Rafa (suscripción, grupo de recursos, identidades) | M |
+| 2 | `catalogo-farolas` | Farolas en Cosmos y expuestas por API, con auditoría desde la primera escritura | Contenedores `Farolas` y `Auditoria` (en Bicep, sin RU/s dedicadas) + carga idempotente desde el CSV (F62 inferida, 70/70) · `GET /api/farolas` anónimo, cacheable, **sin precisión** · `auditar()`: actor `uid`/`sistema:*`/`dev:*`, clave de partición = mes `AAAA-MM`, test de campos prohibidos · **Pruebas: integración de la API contra el emulador de Cosmos (Docker) como contenedor de servicio en la CI (se monta aquí), con la lista de contenedores contrastada con `infra/`.** | 1b desplegado | M |
+| 3 | `mapa-farolas` | Mapa público en solo lectura | Leaflet con PNOA (defecto) y OSM autohospedados, marcador por farola, popup con ID y calle, error de carga visible. Sin login. **Pruebas: infraestructura e2e con Playwright contra la CLI de SWA + emulador de Cosmos (se monta aquí); e2e del mapa.** | 2 | M |
+| 4 | `login-roles` | Identidad, lista cerrada y rol en servidor | GIS solo en el login, validación del ID token y `email_verified` en cada Function, contenedor `Usuarios` (uid, email, sub, rol, estado) como lista cerrada, 403 genérico, límite de peticiones por usuario, `GET /api/yo`, actor = uid, cláusula capa 1 y `/privacidad`, script de baja y supresión, registro de actividades. **Pruebas: usuarios de prueba solo en el emulador y bloqueados en producción (revisa Rai); e2e de login.** | 2 · preguntas RGPD de Rai respondidas | M |
+| 4b | `solicitar-acceso` | Quien no está en la lista puede pedir entrar | Formulario tras el 403, contenedor `SolicitudesAcceso`, conservación fijada por Rai; aprobación según decida Rafa (directiva en la app → M; devs → S). Auditado. | 4 · **quién aprueba (Rafa)** · plazo de las rechazadas (Rai) | S–M |
+| 5 | `reportar-incidencia-farola` | Crear incidencias sin duplicados | `POST /api/incidencias` (farola + comentario ≤ 280 con aviso), bloqueo de duplicados con escritura condicional, incidencias abiertas en el mapa público (sin autor ni comentario), comentario solo para directiva y autor. Auditado con `{presente, longitud}`. **Pruebas: amplía el e2e al flujo de reportar.** | 3, 4 | M |
+| 6 | `votos-incidencia` | Priorizar con +1 | Voto = (incidencia, uid), idempotente; recuento y "has votado", nunca votantes; sin votos en Completadas. Auditado. | 5 | S |
+| 7 | `gestion-estados` | La directiva gestiona | Panel solo directiva, filtros y orden por votos/antigüedad, **Nuevo → Recibido → Profesional notificado (fecha estimada opcional) → Completado** validado en servidor, ocultar comentario. Auditado. | 5 (6 para ordenar por votos) | M |
+| 8 | `reubicar-farola` | Corregir posiciones desde la app | `GET /api/farolas` incluye la precisión solo para la directiva; mover farola y fijar precisión. Auditado (solo coordenadas y precisión). | 3, 4 | S |
+| 9 | `avisos-correo` | Avisar sin abrir la app | Correo de la directiva al crear; al autor en cada cambio de estado; correo mínimo (farola, estado, enlace); email leído de `Usuarios` al enviar; el fallo no bloquea. | 5, 7 · proveedor de correo | M |
+| 10 | `baches-flag` | Baches listos pero apagados | Feature flag servido por la API (apagado en producción), tramos de calle, reporte sobre un tramo, duplicados por cercanía. Se partirá si sale L. | 5, 7 | M–L |
+| 11 | `retencion-y-derechos` | Cumplir los plazos de conservación | Script o Function manual de los devs: purga de comentarios y desvinculación de autores y votos a 12 meses, borrado de bajas a 30 días, purga de auditoría > 3 años, supresión a petición; cada ejecución registrada. Antes del primer año en producción. | 4 · plazos confirmados por Rafa | S |
+
+Paralelizable: 4b, 6 y 8 tras 4/5; 9 en cuanto haya proveedor. Cada cambio arranca solo cuando sus decisiones pendientes están cerradas. Cada cambio que añade un contenedor lo declara en `infra/` (Bicep, sin RU/s dedicadas) en su propio PR, y el deploy manual de infra va antes que el de la app; máximo 25 contenedores en la base de datos.
+
+## Dónde va la auditoría: transversal desde el cambio 2
+
+La infraestructura (contenedor `Auditoria`, módulo `auditar()` y su contrato quién/qué/cuándo/antes/después) entra en el **primer cambio que escribe datos**, el 2 (la carga de farolas), y desde ahí **cada cambio que escribe audita en su propio PR**, con un requisito de spec de la capacidad `auditoria` y tests que comprueban la entrada generada.
+
+- A favor: ninguna escritura llega a producción sin auditar; el coste se reparte en cambios pequeños; el contrato (actor = uid opaco, recomendación de Rai) queda fijado desde el cambio 2 y el 4 solo empieza a usar uids de personas.
+- En contra: el cambio 2 crece un poco (M en vez de S) y el contrato de auditoría se fija pronto.
+- Descartado, cambio propio al final: los cambios 5–8 irían a producción sin auditar y habría que reconstruir el "antes" de operaciones ya hechas, cosa imposible.
