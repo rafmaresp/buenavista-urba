@@ -44,7 +44,7 @@ jobs:
       - name: lizard
         run: |
           pip install lizard
-          lizard src/ --CCN 15 --length 200 --warnings_only -x "*/node_modules/*" -x "*/bin/*" -x "*/obj/*" -x "*/dist/*" -x "*test*"
+          lizard web/src/ api/src/ --CCN 15 --length 200 --warnings_only -x "*/node_modules/*" -x "*/bin/*" -x "*/obj/*" -x "*/dist/*" -x "*test*"
 
   dast:
     name: DAST (OWASP ZAP baseline)

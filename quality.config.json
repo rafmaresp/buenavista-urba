@@ -1,7 +1,8 @@
 {
   "$comment": "Squad Optimized — Plain Concepts. Floors only ratchet up: never lower a floor to go green.",
   "appPaths": [
-    "src/"
+    "web/src/",
+    "api/src/"
   ],
   "specPaths": [
     "openspec/",

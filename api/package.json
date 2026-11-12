@@ -1,0 +1,24 @@
+{
+  "name": "buenavista-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API de Buenavista I · Incidencias (Azure Functions v4, Node 22)",
+  "main": "dist/functions/*.js",
+  "engines": {
+    "node": "^22.22.3"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "npm run build && func start",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
