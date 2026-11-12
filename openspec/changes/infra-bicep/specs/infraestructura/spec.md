@@ -16,26 +16,37 @@ La infraestructura SHALL crear una Static Web App de plan Free con los entornos 
 
 #### Scenario: App setting de datos
 - **WHEN** termina el despliegue
-- **THEN** la SWA tiene el app setting `COSMOS_TABLES_CONNECTION` y su valor no aparece en ningún output ni log del workflow
+- **THEN** la SWA tiene los app settings `COSMOS_CONNECTION` y `COSMOS_DATABASE` y el valor de la cadena de conexión no aparece en ningún output ni log del workflow
 
 #### Scenario: Sin entornos de preview
 - **WHEN** se abre un pull request
 - **THEN** no se crea ningún entorno de staging en la SWA
 
-### Requirement: Cosmos DB for Table gratuito y con tope
-La cuenta de Cosmos DB SHALL usar la API de Table, el nivel gratuito (`enableFreeTier: true`) y el tope de cuenta `totalThroughputLimit: 1000`, en una sola región UE, con backup periódico por defecto, TLS mínimo 1.2 y escritura de metadatos con clave desactivada. La cuenta MUST NOT tener multirregión, escrituras multirregión, backup continuo ni almacén analítico, y sus tablas MUST NOT tener RU/s dedicadas.
+### Requirement: Cosmos DB for NoSQL gratuito y con tope
+La cuenta de Cosmos DB SHALL usar la API de NoSQL, el nivel gratuito (`enableFreeTier: true`) y el tope de cuenta `totalThroughputLimit: 1000`, en una sola región UE, con backup periódico por defecto, TLS mínimo 1.2 y escritura de metadatos con clave desactivada. La cuenta MUST NOT tener multirregión, escrituras multirregión, backup continuo ni almacén analítico.
 
 #### Scenario: Propiedades de coste
 - **WHEN** se inspecciona la cuenta desplegada
-- **THEN** `enableFreeTier` es `true`, `capacity.totalThroughputLimit` es `1000`, hay una sola ubicación y el backup es periódico
-
-#### Scenario: Capacidad compartida
-- **WHEN** termina el despliegue
-- **THEN** la cuenta tiene capacidad compartida a nivel de cuenta, o el workflow falla con un mensaje que lo indica
+- **THEN** `enableFreeTier` es `true`, `capacity.totalThroughputLimit` es `1000`, `capabilities` no incluye `EnableTable`, hay una sola ubicación y el backup es periódico
 
 #### Scenario: Abuso de peticiones
 - **WHEN** las peticiones superan 1000 RU/s
 - **THEN** Cosmos responde 429 y no se factura capacidad adicional
+
+### Requirement: Base de datos con capacidad compartida
+La infraestructura SHALL crear una base de datos `buenavista` con 1000 RU/s manuales compartidas (`options.throughput: 1000`). Los contenedores SHALL declararse en `infra/` en el cambio que los necesite, sin RU/s dedicadas, y MUST NOT superar 25 en la base de datos. Este cambio MUST NOT crear contenedores.
+
+#### Scenario: Capacidad compartida
+- **WHEN** termina el despliegue
+- **THEN** la base de datos `buenavista` tiene 1000 RU/s manuales, o el workflow falla con un mensaje que lo indica
+
+#### Scenario: Contenedor con RU/s dedicadas
+- **WHEN** un cambio declara un contenedor con `options.throughput` o `options.autoscaleSettings`
+- **THEN** el despliegue falla porque la cuenta supera `totalThroughputLimit`, y la comprobación posterior al deploy también lo rechaza
+
+#### Scenario: Crear contenedores con la clave
+- **WHEN** alguien intenta crear o borrar un contenedor con la clave de la cuenta
+- **THEN** Cosmos rechaza la operación de metadatos
 
 ### Requirement: Acceso restringido a los datos
 La cuenta de Cosmos SHALL aceptar conexiones solo desde centros de datos de Azure, más las IP de devs pasadas explícitamente como parámetro. La clave de la cuenta MUST vivir solo en los app settings de la SWA.
@@ -45,7 +56,7 @@ La cuenta de Cosmos SHALL aceptar conexiones solo desde centros de datos de Azur
 - **THEN** Cosmos rechaza la conexión
 
 #### Scenario: Conexión desde la API
-- **WHEN** una Function gestionada de la SWA lee una tabla
+- **WHEN** una Function gestionada de la SWA lee un contenedor
 - **THEN** la lectura funciona
 
 ### Requirement: Comprobación de nivel gratuito
@@ -60,7 +71,7 @@ Antes de cada `what-if` o despliegue, el workflow MUST comprobar que ninguna otr
 - **THEN** la comprobación pasa
 
 ### Requirement: Presupuesto con avisos
-La infraestructura SHALL crear un presupuesto mensual de 1 (moneda de facturación) sobre el grupo de recursos con avisos por correo al 50 % y al 100 %, tanto de coste real como previsto. El destinatario MUST ser un parámetro seguro del despliegue.
+La infraestructura SHALL crear un presupuesto mensual de 1 € (la facturación es en euros) sobre el grupo de recursos con avisos por correo al 50 % y al 100 %, tanto de coste real como previsto. El destinatario MUST ser un parámetro seguro del despliegue.
 
 #### Scenario: Aviso al 50 %
 - **WHEN** el coste real del mes alcanza el 50 % del presupuesto
@@ -75,7 +86,7 @@ Al alcanzar el 100 % del coste real, un mecanismo automático SHALL desactivar e
 
 #### Scenario: Presupuesto agotado
 - **WHEN** el coste real del mes alcanza el 100 %
-- **THEN** la cuenta pasa a `publicNetworkAccess: Disabled`, la API deja de acceder a los datos y las tablas conservan todas sus entidades
+- **THEN** la cuenta pasa a `publicNetworkAccess: Disabled`, la API deja de acceder a los datos y los contenedores conservan todos sus documentos
 
 #### Scenario: Invocación no válida
 - **WHEN** el mecanismo de corte recibe una petición que no es una alerta de presupuesto
