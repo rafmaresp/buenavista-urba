@@ -206,7 +206,7 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 ### 2026-11-13: El repo pasa a ser público para poder proteger `main`
 
 **By:** Rafa
-**What:** `rafmaresp/buenavista-urba` se hace público. Motivo: en un repo privado del plan Free de GitHub no hay rulesets ni protección de rama, y sin ellos la política de fusión solo depende de que el agente la cumpla.
+**What:** `rafmaresp/buenavista-urba` se hará público (pendiente de que Rafa lo confirme y lo cambie). Motivo: en un repo privado del plan Free de GitHub no hay rulesets ni protección de rama, y sin ellos la política de fusión solo depende de que el agente la cumpla.
 **Why:** Coste 0 €. Con el repo público se puede exigir en `main` PR obligatorio y checks en verde, y se obtienen gratis CodeQL y secret scanning con push protection.
 - Antes de publicarlo se revisó el historial: sin secretos ni datos personales en el contenido. Los metadatos de algunos commits llevan el email personal de Rafa como autor.
 - La capa restringida de redes (planos de tuberías y cables) **nunca** se sube al repo.
