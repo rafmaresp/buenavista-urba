@@ -1,6 +1,6 @@
 # Roadmap de cambios hasta la v1
 
-Un cambio OpenSpec = un PR. Tamaños: **S** ≈ < 300 líneas de diff sin lockfiles, **M** ≈ 300–700, **L** > 700 (se parte antes de empezar). Contexto de producto en [`project.md`](project.md).
+Una feature de Spec Kit (`specs/NNN-nombre/`) = un issue = un PR. Tamaños: **S** ≈ < 300 líneas de diff sin lockfiles, **M** ≈ 300–700, **L** > 700 (se parte antes de empezar). Contexto de producto en [`producto.md`](producto.md). Los cambios 1 y 1b ya tienen carpeta: `specs/001-scaffold-plataforma/` y `specs/002-infra-bicep/`.
 
 | # | Cambio | Objetivo | Alcance | Depende de | Tamaño |
 |---|---|---|---|---|---|

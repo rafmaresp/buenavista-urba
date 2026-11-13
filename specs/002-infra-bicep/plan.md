@@ -2,7 +2,7 @@
 
 ## Contexto
 
-- Stack cerrado (`openspec/project.md`): SWA Free con Functions gestionadas Node 22, **Cosmos DB for NoSQL** con nivel gratuito, SDK `@azure/cosmos`, región UE, coste 0–1 €/mes, facturación en **euros**.
+- Stack cerrado (`docs/producto.md`): SWA Free con Functions gestionadas Node 22, **Cosmos DB for NoSQL** con nivel gratuito, SDK `@azure/cosmos`, región UE, coste 0–1 €/mes, facturación en **euros**.
 - Restricción clave de la plataforma: las **Functions gestionadas de la SWA no admiten identidad administrada, referencias a Key Vault ni VNet** ([API support in SWA](https://learn.microsoft.com/azure/static-web-apps/apis-functions)). "Traer tus propias Functions" exige el plan Standard (de pago, ≈ 9 €/mes): descartado.
 - Nivel gratuito de Cosmos ([Lifetime Free Tier](https://learn.microsoft.com/azure/cosmos-db/free-tier), [Service quotas](https://learn.microsoft.com/azure/cosmos-db/concepts-limits)): las primeras **1000 RU/s y 25 GB** de la cuenta son gratis; una sola cuenta gratuita por suscripción; `enableFreeTier` solo se fija al crear la cuenta. "When using the free tier, you can provision a shared database with up to 1000 RU/s for free. All containers in the database share the throughput." Una base de datos con capacidad compartida admite **como mucho 25 contenedores**.
 

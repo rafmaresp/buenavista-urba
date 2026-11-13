@@ -177,6 +177,17 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Disparadores: etiqueta `claude` en un issue o `@claude` en un comentario de issue o PR. Solo el dueño del repo puede dispararlo.
 - Autenticación con la suscripción de Claude (secreto `CLAUDE_CODE_OAUTH_TOKEN`), sin API de pago.
 - Claude deja commits en una rama `claude/issue-<n>-…` y un enlace para abrir el PR; el PR lo abre Rafa con un clic. Sin auto-merge: Rafa revisa todo.
-- Se mantiene OpenSpec (`openspec/`) como convención de specs y los workflows `pc-quality-gates` y `pc-pr-guardrails` (sin el job de AIDLC).
+- Se mantienen los workflows `pc-quality-gates` y `pc-pr-guardrails` (sin el job de AIDLC). OpenSpec se sustituye después por Spec Kit (ver decisión siguiente).
 - Se retiran `.squad/`, `.mcp.json`, el agente `squad`, los workflows `squad-*`, `sync-squad-labels`, `pc-squad-labels`, `pc-metrics` y `pc-weekly-quality`. Las decisiones pasan a `docs/decisions/registro.md` y los documentos de RGPD a `docs/rgpd/`.
 - Siguen sin previews de SWA por PR (decisión del 2026-11-12): la revisión se apoya en la CI.
+
+### 2026-11-13: Ecosistema de GitHub con Claude: Spec Kit sustituye a OpenSpec; fuera pc-pr-guardrails
+
+**By:** Rafa
+**What:** "Usar todo de GitHub pero usando Claude": Spec Kit (`github/spec-kit` v1.4.0, integración Claude) sustituye a OpenSpec.
+**Why:**
+- `specify init --integration claude` genera `.specify/` (constitución, plantillas, scripts) y las skills `.claude/skills/speckit-*`. La constitución recoge los principios del proyecto.
+- Contenido migrado: `openspec/project.md` → `docs/producto.md`, `openspec/roadmap.md` → `docs/roadmap.md`, cambios `scaffold-plataforma` y `infra-bicep` → `specs/001-scaffold-plataforma/` y `specs/002-infra-bicep/` (sin reescribir al formato de Spec Kit).
+- Flujo por issue en dos fases dentro del mismo PR: spec + plan + tareas → revisión de Rafa → `@claude implementa`. Errores y mejoras pequeñas, sin spec.
+- Se retira `pc-pr-guardrails` (comprobaba la convención de OpenSpec). Se mantiene `pc-quality-gates` (TruffleHog, Trivy, Semgrep, SBOM, tests): en un repo privado, el escaneo nativo de GitHub (CodeQL, secret scanning con push protection) es de pago (GitHub Code Security / Secret Protection; dato a confirmar con los precios actuales), así que no hay sustituto nativo a coste 0. Pendiente de que Rafa decida las capas nativas gratuitas (Dependabot, protección de rama, etc.).
+- Claude puede crear y etiquetar issues desde el proyecto en nombre de Rafa: se crean con su cuenta (`rafmaresp`), así que el filtro de actor del workflow los deja pasar sin abrirlo a nadie más.

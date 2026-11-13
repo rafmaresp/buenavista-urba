@@ -1,50 +1,40 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Constitución de Buenavista I · Incidencias
 
-## Core Principles
+Principios que toda spec, plan e implementación de este repo MUST cumplir. El contexto de producto (roles, reglas de negocio, alcance de la v1) está en `docs/producto.md`; las decisiones de Rafa, en `docs/decisions/registro.md`.
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## Principios
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### I. Coste 0–1 €/mes
+Ningún recurso de Azure ni servicio externo de pago se añade sin aprobación expresa de Rafa, aunque cueste céntimos. Se usan niveles gratuitos (SWA Free, Cosmos DB con nivel gratuito y tope de RU/s) y ningún recurso se crea sin el presupuesto de 1 €/mes con corte automático.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Privacidad por diseño (RGPD)
+Datos personales mínimos. Nada de emails, `sub`, tokens ni cuerpos de petición en logs, auditoría, fixtures o commits. La auditoría guarda un `uid` aleatorio, nunca el email. Sin cookies de rastreo ni analítica. Recursos en región UE. Referencia: `docs/rgpd/propuesta-rgpd-v1.md`.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### III. Toda escritura se audita
+Cada operación que escribe datos genera en la misma operación una entrada de auditoría (quién, qué, cuándo, antes, después), append-only. Si no se puede auditar, no se escribe. Cada feature que escribe incluye tests de la entrada generada.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### IV. Autorización en el servidor
+El rol (comunero o directiva) y la pertenencia a la lista cerrada se comprueban en cada Function a partir del ID token de Google validado. El front solo muestra u oculta controles.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### V. Tests en la CI, sin atajos
+Toda feature trae tests (unitarios con Vitest; integración contra el emulador desde el catálogo de farolas; e2e con Playwright desde el mapa). Build y tests en verde en `web/` y `api/` antes de dar un cambio por terminado. Nunca se desactiva, salta ni debilita un test para pasar a verde.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VI. Simplicidad y cambios pequeños
+Primero la solución más simple. Una feature = un issue = un PR de tamaño S o M (ver `docs/roadmap.md`); si sale L se parte antes de implementar. Se reutiliza antes de crear.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Stack y restricciones
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Angular + Leaflet (PNOA por defecto y OSM, autohospedados) en `web/`; Azure Functions v4 en Node 22 y TypeScript estricto en `api/`; Azure Static Web Apps (plan Free) con API gestionada; Azure Cosmos DB con nivel gratuito; login con Google Identity Services y `google-auth-library` (sin auth de SWA); infraestructura con Bicep desplegada con OIDC. Fuera: .NET, Google Maps, WhatsApp, previews de SWA por PR.
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+## Flujo de trabajo
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Se desarrolla desde issues de GitHub con Claude Code Action (ver `AGENTS.md`).
+- Feature nueva: spec, plan y tareas en `specs/NNN-nombre/` → revisión de Rafa en el PR → implementación en el mismo PR.
+- Sin auto-merge: Rafa revisa y fusiona todos los PRs. Nadie hace push a `main`.
+- Idioma: español de España en specs, docs, issues, PRs y commits.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+## Gobierno
+
+Esta constitución prevalece sobre cualquier otra práctica. Cambiarla requiere aprobación de Rafa en un PR que actualice también `docs/decisions/registro.md`. Cada plan comprueba su cumplimiento en la sección "Constitution Check"; una desviación se justifica en "Complexity Tracking".
+
+**Version**: 1.0.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

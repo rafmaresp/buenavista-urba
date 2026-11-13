@@ -1,11 +1,12 @@
 # AGENTS.md
 
-Reglas para cualquier agente de IA que trabaje en este repo. El desarrollo se hace **desde issues de GitHub**: Claude Code se ejecuta en GitHub Actions (`.github/workflows/claude.yml`) cuando Rafa etiqueta un issue con `claude` o escribe `@claude` en un comentario. Nadie desarrolla en local con agentes.
+Reglas para cualquier agente de IA que trabaje en este repo. El desarrollo se hace **desde issues de GitHub**: Claude Code se ejecuta en GitHub Actions (`.github/workflows/claude.yml`) cuando Rafa (o Claude en su nombre desde el proyecto) etiqueta un issue con `claude` o escribe `@claude` en un comentario. Nadie desarrolla en local con agentes.
 
 ## Producto y contexto (leer antes de empezar)
 
-- Producto, roles y reglas de negocio: `openspec/project.md`.
-- Secuencia de cambios hasta la v1: `openspec/roadmap.md`.
+- Principios no negociables: `.specify/memory/constitution.md`.
+- Producto, roles y reglas de negocio: `docs/producto.md`.
+- Secuencia de features hasta la v1: `docs/roadmap.md`.
 - Decisiones de Rafa (en orden cronológico; la más reciente manda): `docs/decisions/registro.md`.
 - RGPD: `docs/rgpd/propuesta-rgpd-v1.md`.
 - Datos de farolas (fuente de verdad): `data/farolas_buenavista.csv`.
@@ -20,12 +21,28 @@ Stack decidido: Angular + Leaflet (PNOA/OSM) en `web/`, Azure Functions v4 en No
 
 ## Cómo trabajar un issue
 
-1. Lee el issue entero y los documentos de arriba que le afecten. Si el issue es ambiguo o contradice `openspec/project.md` o una decisión, **no implementes**: pregunta en un comentario del issue y para.
-2. Cambios no triviales (funcionalidad, API, datos, infraestructura) empiezan como cambio OpenSpec en `openspec/changes/<nombre>/` (`proposal.md`, `design.md`, `tasks.md` y deltas en `specs/`). Si el issue pide "propuesta" o "spec", entrega solo eso. Si pide implementar un cambio ya propuesto, sigue su `tasks.md` y marca las tareas hechas.
-3. Un issue = una rama = un PR pequeño (ver tamaños en `openspec/roadmap.md`). Si sale grande (L), propón cómo partirlo en el issue antes de seguir.
-4. Reutiliza antes de crear: busca helpers o componentes existentes y di cuál reutilizaste.
-5. Ejecuta build y tests de lo que toques antes de terminar. Nunca desactives, saltes ni debilites tests para pasar a verde.
-6. Al acabar, deja en el comentario del issue: qué has hecho, cómo se prueba, qué queda pendiente y las dudas. El PR lo abre Rafa con el enlace que deja la Action; en su descripción va `Closes #<issue>` y, si el PR toca `web/src` o `api/src` sin tocar docs, una línea `Docs-impact: none - <motivo>`.
+Se usa [Spec Kit](https://github.com/github/spec-kit) (v1.4.0, integración Claude): las skills `speckit-*` están en `.claude/skills/` y sus scripts en `.specify/scripts/bash/`. Cada feature vive en `specs/NNN-nombre/` (`spec.md`, `plan.md`, `tasks.md` y, si hace falta, `research.md`, `data-model.md`, `contracts/`).
+
+Lee el issue entero y los documentos de arriba que le afecten. Si es ambiguo o contradice la constitución, `docs/producto.md` o una decisión, **no sigas**: pregunta en un comentario y para.
+
+### Feature nueva (funcionalidad, API, datos, infraestructura): dos fases en el mismo PR
+
+1. **Fase spec** (issue con la etiqueta `claude`): sigue `speckit-specify` con el texto del issue, luego `speckit-plan` y `speckit-tasks`. Si `speckit-specify` deja marcas `[NEEDS CLARIFICATION]`, no inventes: lístalas como preguntas en el comentario del issue. **No escribas código de la aplicación en esta fase.** Termina con commits solo en `specs/NNN-nombre/`.
+2. Rafa abre el PR con el enlace de la Action, revisa spec, plan y tareas, y pide cambios con `@claude` en el PR.
+3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
+
+En cada ejecución empiezas con un checkout limpio. Antes de usar una skill sobre una feature existente, crea `.specify/feature.json` con `{"feature_directory":"specs/NNN-nombre"}` (está en `.gitignore`; no se sube).
+
+### Error, mejora pequeña o documentación
+
+Sin spec: corrige directamente con su test. Si al hacerlo cambia una regla de negocio, para y pregunta.
+
+### Siempre
+
+- Un issue = una rama = un PR de tamaño S o M (ver `docs/roadmap.md`). Si sale L, propón cómo partirlo en el issue antes de seguir.
+- Reutiliza antes de crear: busca helpers o componentes existentes y di cuál reutilizaste.
+- Ejecuta build y tests de lo que toques antes de terminar. Nunca desactives, saltes ni debilites tests para pasar a verde.
+- Al acabar, deja en el comentario: qué has hecho, cómo se prueba, qué queda pendiente y las dudas. El PR lo abre Rafa con el enlace que deja la Action; en su descripción va `Closes #<issue>`.
 
 ## Reglas fijas
 

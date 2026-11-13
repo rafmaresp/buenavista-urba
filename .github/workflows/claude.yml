@@ -3,6 +3,8 @@
 #    hace commits y deja en el issue un comentario con lo hecho y un enlace para abrir el PR.
 #  - `@claude` en un comentario de issue o de PR (o en una revisión): Claude responde o
 #    sigue trabajando; en un PR hace push a la rama del PR.
+# Flujo Spec Kit (spec → revisión → implementación) descrito en AGENTS.md.
+# Límites: herramientas en --allowedTools, --max-turns y timeout-minutes del job.
 # Solo lo puede disparar el dueño del repo (github.repository_owner).
 # Autenticación con la suscripción de Claude (secreto CLAUDE_CODE_OAUTH_TOKEN), sin API de pago.
 name: Claude
@@ -55,5 +57,5 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: |
-            --max-turns 80
-            --allowedTools "Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"
+            --max-turns 120
+            --allowedTools "Skill,Bash(.specify/scripts/bash/check-prerequisites.sh:*),Bash(.specify/scripts/bash/create-new-feature.sh:*),Bash(.specify/scripts/bash/resolve-template.sh:*),Bash(.specify/scripts/bash/setup-plan.sh:*),Bash(.specify/scripts/bash/setup-tasks.sh:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"

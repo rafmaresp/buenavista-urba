@@ -1,6 +1,6 @@
 # Proyecto: Buenavista I · Incidencias
 
-Contexto de producto para OpenSpec. Fuente: decisiones de Rafa del 2026-11-12 (`docs/decisions/registro.md`) y la propuesta RGPD de Rai (`docs/rgpd/propuesta-rgpd-v1.md`). Las propuestas de cambio (`openspec/changes/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
+Contexto de producto para las specs de Spec Kit (`specs/`). Fuente: decisiones de Rafa del 2026-11-12 (`docs/decisions/registro.md`) y la propuesta RGPD de Rai (`docs/rgpd/propuesta-rgpd-v1.md`). Las specs (`specs/NNN-nombre/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
 
 ## Propósito
 
@@ -102,7 +102,7 @@ Todas las pruebas corren en la CI; **sin previews de PR** por ahora.
 - **Stack cerrado**: Angular + Leaflet (PNOA + OSM) · Azure Functions Node 22 + TypeScript (gestionadas por la SWA) con `@azure/cosmos` y `google-auth-library` · **Azure Cosmos DB for NoSQL** con nivel gratuito (`enableFreeTier`, 1000 RU/s y 25 GB), tope de cuenta `totalThroughputLimit = 1000`, **una base de datos con 1000 RU/s compartidas y un contenedor por entidad** (máximo 25, sin RU/s dedicadas, declarados en Bicep); emulador de Cosmos (Docker) en local y en la CI · Static Web Apps Free · región UE.
 - Sin funciones de pago en Cosmos (multirregión, backup continuo, almacén analítico). Una sola cuenta con nivel gratuito por suscripción: se comprueba antes de desplegar.
 - **Contra el abuso**: escrituras solo con login y lista cerrada, con límite de peticiones por usuario; datos accesibles solo desde las Functions; el tope de RU/s convierte un abuso en errores 429, no en factura.
-- **Proceso**: OpenSpec (proponer → revisión de Rafa → aplicar → archivar), un PR por cambio, Rafa revisa y fusiona.
+- **Proceso**: Spec Kit desde issues (spec, plan y tareas → revisión de Rafa → implementación en el mismo PR), un PR por feature, Rafa revisa y fusiona.
 
 ## Pendiente
 

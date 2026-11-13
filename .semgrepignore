@@ -1,6 +1,7 @@
 :include .gitignore
 .claude/
-openspec/
+specs/
+.specify/
 docs/
 node_modules/
 dist/

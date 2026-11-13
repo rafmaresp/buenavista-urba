@@ -47,7 +47,7 @@ export function numstat() {
 export function readConfig() {
   const defaults = {
     appPaths: ['src/', 'app/', 'lib/', 'packages/', 'apps/', 'services/'],
-    specPaths: ['openspec/', 'docs/decisions/', 'docs/adr/', 'features/'],
+    specPaths: ['specs/', 'docs/decisions/', 'docs/adr/', 'features/'],
     docsPaths: ['docs/', 'README.md', 'ARCHITECTURE.md', 'AGENTS.md'],
     coverage: { lines: 0 },
     diff: { maxCommentRatio: 0.1, maxTestToCodeRatio: 1, maxTestsPerKloc: 40 },
