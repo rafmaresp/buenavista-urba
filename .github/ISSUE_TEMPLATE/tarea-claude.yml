@@ -7,8 +7,8 @@ body:
     attributes:
       label: Tipo
       options:
-        - Propuesta OpenSpec (solo spec, sin código)
-        - Implementar un cambio OpenSpec ya aprobado
+        - Feature nueva (Spec Kit - primero spec, plan y tareas; sin código)
+        - Implementar una feature con spec ya aprobada en specs/
         - Corrección de error
         - Mejora pequeña
         - Documentación
@@ -17,8 +17,8 @@ body:
   - type: input
     id: cambio
     attributes:
-      label: Cambio del roadmap
-      description: Nombre en `openspec/roadmap.md` o carpeta de `openspec/changes/`, si aplica.
+      label: Feature del roadmap
+      description: Nombre en `docs/roadmap.md` o carpeta de `specs/` (p. ej. `specs/003-catalogo-farolas`), si aplica.
       placeholder: catalogo-farolas
   - type: textarea
     id: que
