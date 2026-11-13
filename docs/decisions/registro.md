@@ -202,3 +202,12 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Flujo ligero para funcionalidades pedidas desde el proyecto: Rafa aprueba en el chat un resumen de la spec y llega un único PR con spec, código y tests.
 - Política de fusión en `AGENTS.md`: Claude fusiona solo con CI en verde, revisor sin hallazgos y sin tocar zonas sensibles (listadas en `.github/CODEOWNERS`). **No activa**: hasta que Rafa la active, él fusiona todo y sigue vigente "sin auto-merge" de la constitución.
 - No se activa todavía ninguna protección de rama ni ruleset; queda propuesto en el PR. Fuera de esta decisión: subagentes con rol, Azurite/emulador, Playwright, Scorecard.
+
+### 2026-11-13: El repo pasa a ser público para poder proteger `main`
+
+**By:** Rafa
+**What:** `rafmaresp/buenavista-urba` se hace público. Motivo: en un repo privado del plan Free de GitHub no hay rulesets ni protección de rama, y sin ellos la política de fusión solo depende de que el agente la cumpla.
+**Why:** Coste 0 €. Con el repo público se puede exigir en `main` PR obligatorio y checks en verde, y se obtienen gratis CodeQL y secret scanning con push protection.
+- Antes de publicarlo se revisó el historial: sin secretos ni datos personales en el contenido. Los metadatos de algunos commits llevan el email personal de Rafa como autor.
+- La capa restringida de redes (planos de tuberías y cables) **nunca** se sube al repo.
+- Ruleset propuesto en `main`: PR obligatorio sin aprobaciones, checks requeridos, sin force-push ni borrado. La aprobación de code owners no se exige mientras los PRs salgan a nombre de Rafa.
