@@ -57,5 +57,6 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: |
+            --model claude-sonnet-5-5
             --max-turns 120
             --allowedTools "Skill,Bash(.specify/scripts/bash/check-prerequisites.sh:*),Bash(.specify/scripts/bash/create-new-feature.sh:*),Bash(.specify/scripts/bash/resolve-template.sh:*),Bash(.specify/scripts/bash/setup-plan.sh:*),Bash(.specify/scripts/bash/setup-tasks.sh:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"
