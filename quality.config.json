@@ -1,38 +1,25 @@
 {
-  "$comment": "Squad Optimized — Plain Concepts. Floors only ratchet up: never lower a floor to go green.",
+  "$comment": "Umbrales de pc-quality-gates y pc-pr-guardrails. Los mínimos solo suben: nunca se bajan para pasar a verde.",
   "appPaths": [
-    "src/"
+    "web/src/",
+    "api/src/"
   ],
   "specPaths": [
     "openspec/",
     "docs/decisions/",
-    "docs/adr/",
-    ".squad/decisions",
-    "features/"
+    "docs/adr/"
   ],
   "docsPaths": [
     "docs/",
     "README.md",
-    "ARCHITECTURE.md",
     "AGENTS.md"
   ],
   "coverage": {
     "lines": 0
   },
-  "mutation": {
-    "break": 0
-  },
   "diff": {
     "maxCommentRatio": 0.1,
     "maxTestToCodeRatio": 1,
     "maxTestsPerKloc": 40
-  },
-  "mergeGate": {
-    "maxChangedLines": 10000,
-    "botAuthors": [
-      "[bot]",
-      "copilot",
-      "squad"
-    ]
   }
 }

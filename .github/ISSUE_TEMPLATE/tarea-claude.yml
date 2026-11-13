@@ -1,0 +1,37 @@
+name: Tarea para Claude
+description: Algo que Claude debe proponer o implementar. Añade la etiqueta `claude` cuando el issue esté listo para empezar.
+title: "[Tarea]: "
+body:
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      options:
+        - Propuesta OpenSpec (solo spec, sin código)
+        - Implementar un cambio OpenSpec ya aprobado
+        - Corrección de error
+        - Mejora pequeña
+        - Documentación
+    validations:
+      required: true
+  - type: input
+    id: cambio
+    attributes:
+      label: Cambio del roadmap
+      description: Nombre en `openspec/roadmap.md` o carpeta de `openspec/changes/`, si aplica.
+      placeholder: catalogo-farolas
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué quiero
+    validations:
+      required: true
+  - type: textarea
+    id: aceptacion
+    attributes:
+      label: Criterios de aceptación
+      description: Dado / Cuando / Entonces si es posible.
+  - type: textarea
+    id: limites
+    attributes:
+      label: Fuera de alcance o restricciones

@@ -1,6 +1,6 @@
 # Proyecto: Buenavista I · Incidencias
 
-Contexto de producto para OpenSpec. Fuente: decisiones de Rafa del 2026-11-12 (`.squad/decisions/inbox/`) y la propuesta RGPD de Rai (`.squad/rai/propuesta-rgpd-v1.md`). Las propuestas de cambio (`openspec/changes/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
+Contexto de producto para OpenSpec. Fuente: decisiones de Rafa del 2026-11-12 (`docs/decisions/registro.md`) y la propuesta RGPD de Rai (`docs/rgpd/propuesta-rgpd-v1.md`). Las propuestas de cambio (`openspec/changes/`) MUST ser coherentes con este documento; si un cambio necesita contradecirlo, primero se actualiza aquí con el visto bueno de Rafa. La secuencia de cambios vive en [`roadmap.md`](roadmap.md).
 
 ## Propósito
 

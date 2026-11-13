@@ -1,4 +1,4 @@
-# Squad Decisions
+# Registro de decisiones
 
 ## Active Decisions
 
@@ -108,7 +108,7 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **By:** Rai
 **What:** Auditoría con uid interno aleatorio (no email ni sub); tabla Usuarios única correspondencia; plazos 30 días / 12 meses / 3 años; lista cerrada de correos
 **References:** openspec/project.md, openspec/roadmap.md, Cuesta, Rafa
-**Why:** Recomendación de Rai (veredicto 🟡, propuesta completa en .squad/rai/propuesta-rgpd-v1.md; a validar por un profesional).
+**Why:** Recomendación de Rai (veredicto 🟡, propuesta completa en docs/rgpd/propuesta-rgpd-v1.md; a validar por un profesional).
 
 1) La auditoría guarda un uid interno aleatorio (UUID v4), no email ni sub, y se prefiere a un HMAC del sub (sin clave que custodiar y el borrado del mapeo es total). La tabla Usuarios (PK uid: email, sub, rol, estado) es la única correspondencia y a la vez la lista cerrada. Prohibido en antes/despues: email, sub, nombre y texto del comentario (se audita solo presente/longitud), con test en el cambio 2.
 2) Supresión: vaciar email y sub en Usuarios, estado suprimido, autor nulo en incidencias y votos, entrada de auditoría sin datos personales.
@@ -168,3 +168,15 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - E2E con Playwright contra la CLI de SWA (web y API) más Azurite en la CI, desde el cambio 3 (mapa); el cambio 5 (reportar) amplía los flujos.
 - Login en e2e: necesitará un mecanismo de usuarios de prueba solo para el emulador y bloqueado en producción; lo diseña Cuesta en el cambio 4 y lo revisa Rai.
 - Previews de SWA por PR: no, por ahora (URLs públicas y el login de Google no funciona en ellas).
+
+### 2026-11-13: Desarrollo dirigido por issues con Claude Code Action; se abandona Squad (fork de Plain Concepts)
+
+**By:** Rafa
+**What:** El repo deja de desarrollarse con agentes en local y pasa a reaccionar a issues de GitHub con `anthropics/claude-code-action@v1`.
+**Why:** Rafa no quiere tener el código ni los agentes en su Mac. En un flujo por issues, el equipo multiagente de Squad, su MCP, el repo map y la medición AIDLC no aportan.
+- Disparadores: etiqueta `claude` en un issue o `@claude` en un comentario de issue o PR. Solo el dueño del repo puede dispararlo.
+- Autenticación con la suscripción de Claude (secreto `CLAUDE_CODE_OAUTH_TOKEN`), sin API de pago.
+- Claude deja commits en una rama `claude/issue-<n>-…` y un enlace para abrir el PR; el PR lo abre Rafa con un clic. Sin auto-merge: Rafa revisa todo.
+- Se mantiene OpenSpec (`openspec/`) como convención de specs y los workflows `pc-quality-gates` y `pc-pr-guardrails` (sin el job de AIDLC).
+- Se retiran `.squad/`, `.mcp.json`, el agente `squad`, los workflows `squad-*`, `sync-squad-labels`, `pc-squad-labels`, `pc-metrics` y `pc-weekly-quality`. Las decisiones pasan a `docs/decisions/registro.md` y los documentos de RGPD a `docs/rgpd/`.
+- Siguen sin previews de SWA por PR (decisión del 2026-11-12): la revisión se apoya en la CI.

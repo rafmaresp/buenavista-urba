@@ -1,0 +1,61 @@
+# Claude Code trabaja a partir de issues y comentarios de GitHub.
+#  - Etiqueta `claude` en un issue: Claude lee el issue, crea una rama claude/issue-<n>-<fecha>,
+#    hace commits y deja en el issue un comentario con lo hecho y un enlace para abrir el PR.
+#  - `@claude` en un comentario de issue o de PR (o en una revisión): Claude responde o
+#    sigue trabajando; en un PR hace push a la rama del PR.
+# Solo lo puede disparar el dueño del repo (github.repository_owner).
+# Autenticación con la suscripción de Claude (secreto CLAUDE_CODE_OAUTH_TOKEN), sin API de pago.
+name: Claude
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: >-
+      github.actor == github.repository_owner && (
+        (github.event_name == 'issues' && github.event.label.name == 'claude') ||
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+
+      # Excepción a "actions fijadas por SHA": @v1 es la referencia que recomienda Anthropic
+      # y se actualiza a menudo. Fijarla por SHA cuando el flujo esté estable.
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          label_trigger: claude
+          trigger_phrase: "@claude"
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"
