@@ -1,0 +1,31 @@
+# TEMPORAL: inicializa Spec Kit v1.4.0 para Claude y hace commit en la rama del PR.
+# Se borra en el siguiente commit del PR.
+name: speckit-init (temporal)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  init:
+    if: github.head_ref == 'claude/project-thread-dnnbj5' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+      - name: specify init
+        run: |
+          pipx run --spec "git+https://github.com/github/spec-kit.git@0019fa14d12f45edabc2cc3176c9168a68bd0f97" \
+            specify init --here --integration claude --script sh --force --non-interactive --ignore-agent-tools
+          git status --short
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: specify init --integration claude (Spec Kit v1.4.0)"
+          git push
