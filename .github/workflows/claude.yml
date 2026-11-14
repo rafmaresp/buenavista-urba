@@ -44,15 +44,35 @@ jobs:
       id-token: write
       actions: read
     steps:
+      # Un @claude (o volver a poner la etiqueta) en un issue que ya tiene PR abierto crearía
+      # otra rama: se redirige al PR.
+      - name: Comprobar si el issue ya tiene PR
+        id: pr-existente
+        if: github.event_name == 'issues' || (github.event_name == 'issue_comment' && !github.event.issue.pull_request)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          pr=$(gh api "repos/$REPO/pulls?state=open&per_page=100" \
+            --jq '[.[] | select((.head.ref | startswith("claude/issue-" + env.ISSUE + "-")) or ((.body // "") | test("(?i)closes #" + env.ISSUE + "\\b")))][0].number // empty')
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          if [ -n "$pr" ]; then
+            gh issue comment "$ISSUE" -R "$REPO" --body "Este issue ya tiene el PR #$pr. Escribe el \`@claude\` en el PR (por ejemplo \`@claude implementa\`) para que el trabajo siga en la misma rama."
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.pr-existente.outputs.pr == ''
         with:
           fetch-depth: 1
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.pr-existente.outputs.pr == ''
         with:
           node-version: "^22.22.3"
 
       - id: claude
+        if: steps.pr-existente.outputs.pr == ''
         uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

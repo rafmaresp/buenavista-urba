@@ -25,11 +25,27 @@ Se usa [Spec Kit](https://github.com/github/spec-kit) (v1.4.0, integración Clau
 
 Lee el issue entero y los documentos de arriba que le afecten. Si es ambiguo o contradice la constitución, `docs/producto.md` o una decisión, **no sigas**: pregunta en un comentario y para.
 
+**Primero clasifica el issue** y di en tu comentario cuál has elegido:
+
+| Tipo | Ejemplos | Qué haces |
+|---|---|---|
+| Error, mejora pequeña o documentación | un texto, un estilo, un fallo con causa clara, un test que falta | Lo implementas directamente con su test (sección "Error, mejora pequeña o documentación") |
+| Feature nueva | pantalla o flujo nuevo, endpoint de API, tabla o dato nuevo, cambio de rol o permiso, regla de negocio, infraestructura | Dos fases: solo spec, paras y esperas aprobación |
+
+Si dudas entre los dos, es feature nueva.
+
 ### Feature nueva (funcionalidad, API, datos, infraestructura): dos fases en el mismo PR
 
-1. **Fase spec** (issue con la etiqueta `claude`): sigue `speckit-specify` con el texto del issue, luego `speckit-plan` y `speckit-tasks`. Si `speckit-specify` deja marcas `[NEEDS CLARIFICATION]`, no inventes: lístalas como preguntas en el comentario del issue. **No escribas código de la aplicación en esta fase.** Termina con commits solo en `specs/NNN-nombre/`.
-2. El workflow abre el PR (`Closes #<issue>`) y se lo asigna a Rafa. Rafa revisa spec, plan y tareas, y pide cambios con `@claude` en el PR.
-3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
+1. **Fase spec** (issue con la etiqueta `claude`): aplica `disenar-cambio` y sigue `speckit-specify` con el texto del issue, luego `speckit-plan` y `speckit-tasks`. **No escribas código de la aplicación ni tests en esta fase.** Termina con commits solo en `specs/NNN-nombre/`. Tu comentario en el issue lleva:
+   - la spec resumida en cuatro a ocho líneas (qué hace, para quién, qué queda fuera);
+   - las marcas `[NEEDS CLARIFICATION]` como preguntas numeradas, sin inventar respuestas;
+   - la línea: "Para aprobar, comenta `@claude implementa` en el PR; para cambiar algo, comenta `@claude` con el cambio en el PR".
+
+   Después **para**.
+2. El workflow abre el PR (`Closes #<issue>`) y se lo asigna a Rafa. Rafa revisa spec, plan y tareas, y pide cambios con `@claude` en el PR. Mientras no diga `implementa`, cada `@claude` en el PR solo toca `specs/NNN-nombre/`.
+3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR, o "implementa" en un comentario `@claude` del PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
+
+Una vez abierto el PR, la conversación sigue **en el PR**, no en el issue: cada `@claude` en el issue crearía otra rama. El workflow no ejecuta Claude para un `@claude` ni para la etiqueta `claude` en un issue que ya tiene un PR abierto: deja un comentario que lleva al PR.
 
 En cada ejecución empiezas con un checkout limpio. Antes de usar una skill sobre una feature existente, crea `.specify/feature.json` con `{"feature_directory":"specs/NNN-nombre"}` (está en `.gitignore`; no se sube).
 
