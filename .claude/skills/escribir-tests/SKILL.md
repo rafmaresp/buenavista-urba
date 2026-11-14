@@ -18,7 +18,7 @@ Un test sirve si falla cuando la funcionalidad se rompe. Escribe pocos y que cue
 ## Cómo
 
 - Vitest (`npm test` en `web/` y `api/`). Las reglas de negocio van en funciones puras exportadas y se prueban sin el runtime de Functions; el trigger solo las envuelve.
-- Mockea solo los bordes: la verificación del token de Google (`google-auth-library`) y el cliente de `@azure/data-tables` en unitarias. Desde el cambio 2, la integración va contra Azurite en la CI.
+- Mockea solo los bordes: la verificación del token de Google (`google-auth-library`) y el cliente de `@azure/data-tables` en unitarias. La integración va contra Azurite en la CI (`TABLES_CONNECTION`; ejemplo en `api/src/tables.integration.test.ts`). Cada funcionalidad con interfaz trae su e2e en `e2e/tests/` (Playwright contra la CLI de SWA, escritorio y móvil), con una captura de la pantalla nueva; el patrón está en `e2e/tests/smoke.spec.ts`.
 - Datos de prueba ficticios: `uid` aleatorios y emails `@example.com`. Nunca datos reales de comuneros.
 - Cada test prepara su estado y no depende del orden de ejecución.
 

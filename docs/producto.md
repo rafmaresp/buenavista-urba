@@ -90,8 +90,8 @@ Zonas de **maleza**, **incidencia libre** sobre las calles, **capa de redes** (s
 
 Todas las pruebas corren en la CI; **sin previews de PR** por ahora.
 - **Unitarias** con Vitest en cada cambio (`web/` y `api/`).
-- **Integración de la API** contra **Azurite** (emulador oficial de Azure Storage, imagen Docker `mcr.microsoft.com/azure-storage/azurite`) como contenedor de servicio de GitHub Actions desde el cambio 2; en local, el mismo Azurite. Docker solo para pruebas, nunca en producción.
-- **e2e** con Playwright contra la CLI de SWA (`swa start`) más Azurite desde el cambio 3; el cambio 5 los amplía al flujo de reportar.
+- **Integración de la API** contra **Azurite** (emulador oficial de Azure Storage, imagen Docker `mcr.microsoft.com/azure-storage/azurite`) en el job `api` de la CI (ya montado); en local, el mismo Azurite. Docker solo para pruebas, nunca en producción.
+- **e2e** con Playwright contra la CLI de SWA (`swa start`), en el job `e2e` de la CI (ya montado, con una prueba de humo); cada funcionalidad con interfaz añade la suya y el cambio 5 los amplía al flujo de reportar. Capturas e informe como artefacto de la ejecución.
 - **Coste de la CI: 0 €** (dentro de los minutos gratuitos de GitHub Actions; Azurite es gratuito y arranca en segundos). Azurite no reproduce límites de transacciones ni latencias reales: eso se observa en Azure.
 - **Usuarios de prueba** para el e2e: solo en Azurite y **bloqueados en producción**; se diseñan en el cambio 4 y los revisa Rai.
 
