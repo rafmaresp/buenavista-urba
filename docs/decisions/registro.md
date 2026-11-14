@@ -229,3 +229,9 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** Sin pausa, la Action programaba antes de que Rafa viera la spec, y una mala interpretación obligaba a tirar el PR entero.
 - La aprobación se da en el PR, no en el issue: cada `@claude` en el issue crea otra rama. El workflow ya no ejecuta Claude para un `@claude` en un issue que tiene PR abierto, y deja un comentario que lleva al PR.
 - En la duda entre cambio pequeño y funcionalidad nueva, se trata como funcionalidad nueva.
+
+### 2026-11-14: Spec Kit estricto: spec, plan y tareas siempre con las skills
+
+**By:** Rafa
+**What:** La Action (y Claude desde el proyecto) genera spec, plan y tareas ejecutando las skills `speckit-specify`, `speckit-plan` y `speckit-tasks`, y la implementación con `speckit-implement` y `speckit-converge`. No se escriben a mano ni se copia el formato de las specs migradas de OpenSpec (001 y 002).
+**Why:** En la prueba del issue #9, la Action escribió los tres ficheros a mano en 11 turnos: la spec se parecía a la plantilla, pero el plan y las tareas copiaron el formato de la spec 002, sin "Constitution Check" ni tareas numeradas. Trade-off aceptado: cada fase spec tarda más y gasta más cuota de la suscripción.
