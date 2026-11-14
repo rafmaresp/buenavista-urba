@@ -31,4 +31,4 @@ Un test sirve si falla cuando la funcionalidad se rompe. Escribe pocos y que cue
 
 ## Al terminar
 
-Ejecuta build y tests en `web/` y `api/`. En el comentario o el PR di qué requisitos de la spec quedan cubiertos por qué tests y cuáles no se han podido probar (por ejemplo, los 429 de Cosmos, que el emulador no reproduce).
+Ejecuta build y tests en `web/` y `api/`. En el comentario o el PR di qué requisitos de la spec quedan cubiertos por qué tests y cuáles no se han podido probar (por ejemplo, los límites y errores 503 de Table Storage, que Azurite no reproduce).
