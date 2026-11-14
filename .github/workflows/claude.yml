@@ -1,6 +1,7 @@
 # Claude Code trabaja a partir de issues y comentarios de GitHub.
 #  - Etiqueta `claude` en un issue: Claude lee el issue, crea una rama claude/issue-<n>-<fecha>,
-#    hace commits y deja en el issue un comentario con lo hecho y un enlace para abrir el PR.
+#    hace commits y deja en el issue un comentario con lo hecho. El paso final abre el PR
+#    (Closes #<n>) y lo asigna al dueño del repo, con el token del secreto PR_TOKEN.
 #  - `@claude` en un comentario de issue o de PR (o en una revisión): Claude responde o
 #    sigue trabajando; en un PR hace push a la rama del PR.
 # Flujo Spec Kit (spec → revisión → implementación) descrito en AGENTS.md.
@@ -49,7 +50,8 @@ jobs:
         with:
           node-version: "^22.22.3"
 
-      - uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
+      - id: claude
+        uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: claude
@@ -60,3 +62,41 @@ jobs:
             --model claude-sonnet-5-5
             --max-turns 120
             --allowedTools "Skill,Bash(.specify/scripts/bash/check-prerequisites.sh:*),Bash(.specify/scripts/bash/create-new-feature.sh:*),Bash(.specify/scripts/bash/resolve-template.sh:*),Bash(.specify/scripts/bash/setup-plan.sh:*),Bash(.specify/scripts/bash/setup-tasks.sh:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"
+
+      # Abre el PR de la rama que deja Claude en un issue. Usa un token de Rafa (secreto PR_TOKEN,
+      # fine-grained, solo este repo: Contents read, Pull requests write e Issues write) para que el PR dispare
+      # la CI y el revisor; con GITHUB_TOKEN no se dispararían. Sin el secreto, deja un aviso y
+      # sigue valiendo el enlace "Create PR" del comentario.
+      - name: Abrir PR
+        if: >-
+          always() && steps.claude.outputs.branch_name != '' &&
+          (github.event_name == 'issues' || (github.event_name == 'issue_comment' && !github.event.issue.pull_request))
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          BRANCH: ${{ steps.claude.outputs.branch_name }}
+          BASE: ${{ github.event.repository.default_branch }}
+          ISSUE: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::Falta el secreto PR_TOKEN: abre el PR con el enlace del comentario."
+            exit 0
+          fi
+          if ! gh api "repos/$REPO/branches/$BRANCH" --silent 2>/dev/null; then
+            echo "Claude no ha subido la rama $BRANCH; no hay PR que abrir."
+            exit 0
+          fi
+          ahead=$(gh api "repos/$REPO/compare/$BASE...$BRANCH" --jq .ahead_by)
+          if [ "$ahead" = "0" ]; then
+            echo "La rama $BRANCH no tiene commits nuevos; no se abre PR."
+            exit 0
+          fi
+          if [ -n "$(gh pr list -R "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number')" ]; then
+            echo "Ya hay un PR abierto para $BRANCH."
+            exit 0
+          fi
+          printf 'Closes #%s\n\nPR abierto automáticamente por el workflow Claude a partir del issue #%s. El detalle de lo hecho está en el comentario de Claude en el issue.\n' "$ISSUE" "$ISSUE" > "$RUNNER_TEMP/pr-body.md"
+          gh pr create -R "$REPO" --base "$BASE" --head "$BRANCH" \
+            --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md" --assignee "$OWNER"
