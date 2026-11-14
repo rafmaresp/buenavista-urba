@@ -41,6 +41,64 @@ jobs:
           node-version: "^22.22.3"
           cache: npm
           cache-dependency-path: api/package-lock.json
+      # Azurite (emulador de Azure Storage) para la integración con Table Storage.
+      - name: Arrancar Azurite (Table)
+        working-directory: .
+        run: |
+          docker run -d --name azurite -p 10002:10002 \
+            mcr.microsoft.com/azure-storage/azurite:3.35.0 \
+            azurite-table --tableHost 0.0.0.0 --skipApiVersionCheck
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/10002) 2>/dev/null; then echo "Azurite listo"; exit 0; fi
+            sleep 1
+          done
+          docker logs azurite
+          exit 1
       - run: npm ci
       - run: npm run build
       - run: npm test
+        env:
+          TABLES_CONNECTION: UseDevelopmentStorage=true
+          REQUIRE_AZURITE: "1"
+
+  # e2e con Playwright contra la CLI de SWA (web + API como en producción).
+  # No es un check obligatorio del ruleset; capturas e informe como artefacto.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            api/package-lock.json
+            e2e/package-lock.json
+      - name: Compilar web y API
+        run: |
+          npm ci --prefix web && npm run build --prefix web
+          npm ci --prefix api && npm run build --prefix api
+          cp api/local.settings.sample.json api/local.settings.json
+      - name: Instalar Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: e2e
+        working-directory: e2e
+        run: npm test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-capturas-e-informe
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          if-no-files-found: ignore
+      - name: Resumen
+        if: always()
+        run: |
+          echo "### e2e (Playwright)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Capturas e informe HTML en el artefacto **e2e-capturas-e-informe** de esta ejecución." >> "$GITHUB_STEP_SUMMARY"

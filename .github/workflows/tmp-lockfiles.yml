@@ -1,0 +1,26 @@
+# TEMPORAL: genera los package-lock.json (el entorno de Claude no llega al registro de npm). Se borra en el siguiente commit.
+name: tmp-lockfiles
+on:
+  push:
+    branches: [claude/project-thread-dnnbj5]
+    paths: [.github/workflows/tmp-lockfiles.yml]
+permissions:
+  contents: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+      - run: npm install --save-exact=false @azure/data-tables@latest
+        working-directory: api
+      - run: npm install -D @playwright/test@latest @azure/static-web-apps-cli@latest azure-functions-core-tools@4 @types/node@22
+        working-directory: e2e
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/package.json api/package-lock.json e2e/package.json e2e/package-lock.json
+          git commit -m "chore: lockfiles de @azure/data-tables y del paquete e2e"
+          git push
