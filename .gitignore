@@ -29,3 +29,6 @@ __queuestorage__/
 .squad-workstream
 # squad:claude
 .claude/worktrees/
+
+# API build
+api/dist/

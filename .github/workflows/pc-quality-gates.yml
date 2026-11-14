@@ -60,11 +60,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: echo "No toolchain detected — edit pc-quality-gates.yml"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            api/package-lock.json
       - name: Install
-        run: echo "no install step"
-      - name: Test with coverage
-        run: echo "no tests"
+        run: |
+          npm ci --prefix web
+          npm ci --prefix api
+      - name: Tests (la cobertura aún no se genera)
+        run: |
+          npm test --prefix web
+          npm test --prefix api
       - name: Enforce coverage floor (quality.config.json)
         run: node .github/scripts/pc-coverage-floor.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
