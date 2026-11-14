@@ -92,7 +92,7 @@ La API SHALL acceder a Table Storage con un SAS de cuenta limitado al servicio T
 
 ##### Scenario: Credencial filtrada
 - **WHEN** alguien obtiene `TABLES_CONNECTION`
-- **THEN** puede leer y escribir entidades hasta que caduque o se rote la clave, pero no puede borrar tablas ni acceder a blobs, colas o ficheros
+- **THEN** puede leer, modificar y borrar entidades (incluso todas, que equivale a perder los datos y la auditoría) hasta que caduque o se rote la clave, pero no puede borrar tablas ni acceder a blobs, colas o ficheros
 
 ##### Scenario: Conexión desde la API
 - **WHEN** una Function gestionada de la SWA lee una tabla

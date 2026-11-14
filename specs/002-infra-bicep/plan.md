@@ -102,6 +102,7 @@ Antes del paso de despliegue: `azure/login` con `id-buenavista-app` y `az static
 ## Riesgos
 - Sin tope duro de gasto y el corte llega con retraso (D5); mitigado por el alcance del SAS, el límite de peticiones y el presupuesto.
 - Con el SAS filtrado, alguien puede leer y escribir entidades (no borrar tablas ni usar otros servicios). Mitigación: rotación documentada (regenerar la clave que firma el SAS y desplegar).
+- Auditoría append-only: el SAS de cuenta da `raud` sobre todas las tablas, también `Auditoria`, así que el append-only solo lo garantiza el código. Alternativa sin coste para el cambio 2: un SAS de servicio por tabla (`listServiceSas`) que en `Auditoria` solo dé `ra`, a cambio de un app setting por tabla. Pendiente de que Rafa elija.
 - Caducidad del SAS: si no se despliega en un año, la API pierde el acceso. Mitigación: aviso en el README y en el aviso de despliegue; se puede alargar el parámetro.
 - Una tabla nueva exige desplegar `infra.yml` antes que la app (D4).
 
