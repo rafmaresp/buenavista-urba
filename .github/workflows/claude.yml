@@ -93,8 +93,12 @@ jobs:
             echo "La rama $BRANCH no tiene commits nuevos; no se abre PR."
             exit 0
           fi
-          if [ -n "$(gh pr list -R "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number')" ]; then
-            echo "Ya hay un PR abierto para $BRANCH."
+          # Cada ejecución crea una rama claude/issue-<n>-<fecha>; si el issue ya tiene un PR
+          # abierto (de esta rama o de una anterior), no se abre otro.
+          existing=$(gh pr list -R "$REPO" --state open --limit 100 --json number,headRefName,body \
+            --jq '[.[] | select(.headRefName == env.BRANCH or (.headRefName | startswith("claude/issue-" + env.ISSUE + "-")) or (.body | test("(?i)closes #" + env.ISSUE + "\\b")))][0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "::notice::Ya existe el PR #$existing para el issue #$ISSUE; no se abre otro. Sigue la conversación en ese PR."
             exit 0
           fi
           printf 'Closes #%s\n\nPR abierto automáticamente por el workflow Claude a partir del issue #%s. El detalle de lo hecho está en el comentario de Claude en el issue.\n' "$ISSUE" "$ISSUE" > "$RUNNER_TEMP/pr-body.md"
