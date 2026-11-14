@@ -221,3 +221,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Trade-off aceptado: Table Storage **no tiene tope duro de gasto** (Cosmos con nivel gratuito sí). Se acota con el presupuesto de 1 € y corte automático (que actúa con 8–24 h de retraso), un SAS limitado a entidades de Table y el límite de peticiones de la API. Sin Cosmos desaparecen la comprobación de nivel gratuito y el límite de 25 contenedores.
 - Actualizados `README.md`, `AGENTS.md`, la constitución, `docs/producto.md`, `docs/roadmap.md`, `specs/002-infra-bicep/` y las skills `escribir-tests` y `revisar-seguridad`.
 - PR automático: usa un token fine-grained de Rafa (secreto `PR_TOKEN`, solo este repo, Contents read, Pull requests write e Issues write) para que el PR dispare la CI y el revisor; con `GITHUB_TOKEN` no se dispararían. El PR sale a nombre de Rafa, así que GitHub no permite pedirle revisión a él mismo: la asignación hace de aviso. Sin el secreto, el workflow deja un aviso y sigue valiendo el enlace "Create PR".
+
+### 2026-11-14: Flujo por issues en dos pasos para funcionalidad nueva
+
+**By:** Rafa
+**What:** Un issue con `claude` se clasifica primero. Los errores, las mejoras pequeñas y la documentación se implementan directamente con su test. Una funcionalidad nueva va en dos pasos: la Action escribe solo spec, plan y tareas, deja la spec resumida en el issue y para. Implementa cuando Rafa comenta `@claude implementa` en el PR.
+**Why:** Sin pausa, la Action programaba antes de que Rafa viera la spec, y una mala interpretación obligaba a tirar el PR entero.
+- La aprobación se da en el PR, no en el issue: cada `@claude` en el issue crea otra rama. El workflow ya no ejecuta Claude para un `@claude` en un issue que tiene PR abierto, y deja un comentario que lleva al PR.
+- En la duda entre cambio pequeño y funcionalidad nueva, se trata como funcionalidad nueva.
