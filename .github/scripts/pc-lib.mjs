@@ -47,15 +47,14 @@ export function numstat() {
 export function readConfig() {
   const defaults = {
     appPaths: ['src/', 'app/', 'lib/', 'packages/', 'apps/', 'services/'],
-    specPaths: ['openspec/', 'docs/decisions/', 'docs/adr/', '.squad/decisions', 'features/'],
+    specPaths: ['specs/', 'docs/decisions/', 'docs/adr/', 'features/'],
     docsPaths: ['docs/', 'README.md', 'ARCHITECTURE.md', 'AGENTS.md'],
     coverage: { lines: 0 },
     diff: { maxCommentRatio: 0.1, maxTestToCodeRatio: 1, maxTestsPerKloc: 40 },
-    mergeGate: { maxChangedLines: 10000, botAuthors: ['[bot]', 'copilot', 'squad'] },
   };
   if (!existsSync('quality.config.json')) return defaults;
   const cfg = JSON.parse(readFileSync('quality.config.json', 'utf8'));
-  return { ...defaults, ...cfg, coverage: { ...defaults.coverage, ...cfg.coverage }, diff: { ...defaults.diff, ...cfg.diff }, mergeGate: { ...defaults.mergeGate, ...cfg.mergeGate } };
+  return { ...defaults, ...cfg, coverage: { ...defaults.coverage, ...cfg.coverage }, diff: { ...defaults.diff, ...cfg.diff } };
 }
 
 export const isTestFile = (f) => /(^|\/)(tests?|__tests__|spec)\//i.test(f) || /\.(test|spec)\.[a-z]+$/i.test(f) || /Tests?\.cs$/.test(f) || /(^|\/)test_[^/]+\.py$/.test(f);

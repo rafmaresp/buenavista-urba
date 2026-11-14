@@ -1,0 +1,75 @@
+# Revisor independiente: otro Claude, en contexto limpio y sin acceso a cómo se escribió el
+# código, revisa cada PR con la skill `revisar-pr` y comenta los hallazgos.
+#  - Se ejecuta al abrir el PR, al marcarlo listo y en cada push (cancela la revisión anterior).
+#  - Solo lee el repo: no hace commits ni cambia el PR. Comenta como github-actions[bot].
+#  - El job termina en rojo si quedan hallazgos (bloqueantes o importantes) o si no hay veredicto.
+#    Ese resultado es la condición 2 de la política de fusión de AGENTS.md.
+# Modelo: Opus 5.5 (revisión de más calidad; los PRs son S/M). Consumo contra la suscripción
+# de Claude (secreto CLAUDE_CODE_OAUTH_TOKEN), sin API de pago.
+name: Revisor Claude
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+concurrency:
+  group: claude-revisor-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  revisar:
+    name: Revisor independiente
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - id: claude
+        uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Token del workflow: comenta como github-actions[bot], no como Rafa ni como el autor.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR: ${{ github.event.pull_request.number }}
+
+            Eres el revisor independiente de este PR. Sigue la skill `revisar-pr` al pie de la letra.
+            Obtén el diff con `gh pr diff` y la descripción con `gh pr view`; lee del checkout el contexto que necesites.
+            No modifiques archivos ni hagas commits.
+
+            Publica cada hallazgo como comentario en línea con `mcp__github_inline_comment__create_inline_comment`
+            (marca [bloqueante] o [importante] al principio). Después publica un único comentario resumen con
+            `gh pr comment`: número de hallazgos por tipo, preguntas abiertas y si el PR toca zonas sensibles
+            de la política de fusión. Si no hay hallazgos, dilo en una línea.
+
+            Termina tu respuesta final con una de estas dos líneas exactas, sin nada después:
+            VEREDICTO: SIN_HALLAZGOS
+            VEREDICTO: CON_HALLAZGOS
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 40
+            --allowedTools "Skill,Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git log:*),Bash(git diff:*),mcp__github_inline_comment__create_inline_comment"
+
+      - name: Comprobar veredicto
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          veredicto=$(jq -r '[.[] | select(.type == "result")] | last | .result // ""' "$EXECUTION_FILE" | grep -oE 'VEREDICTO: (SIN|CON)_HALLAZGOS' | tail -n1 || true)
+          echo "Veredicto: ${veredicto:-ninguno}"
+          if [ "$veredicto" != "VEREDICTO: SIN_HALLAZGOS" ]; then
+            echo "::error::El revisor ha dejado hallazgos o no ha emitido veredicto. Mira los comentarios del PR."
+            exit 1
+          fi

@@ -4,12 +4,12 @@ Web de incidencias de la urbanización Buenavista I (Dos Hermanas): farolas fund
 
 ## Stack
 
-- **Front** (`web/`): Angular + Leaflet (Leaflet llega con el cambio `mapa-farolas`).
+- **Front** (`web/`): Angular 22 + Leaflet (Leaflet llega con la feature `mapa-farolas`).
 - **API** (`api/`): Azure Functions v4, Node 22, TypeScript.
-- **Datos**: Azure Cosmos DB for Table con nivel gratuito (aún sin usar).
+- **Datos**: Azure Cosmos DB for NoSQL con nivel gratuito (aún sin usar).
 - **Hosting**: Azure Static Web Apps (plan Free).
 
-Producto y roadmap: `PRODUCT_SCOPE.md` y `openspec/project.md`. La infraestructura Azure se creará con Bicep en el cambio 1b; hasta entonces el despliegue se omite si falta el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+Producto y roadmap: `docs/producto.md` y `docs/roadmap.md`; specs en `specs/`. La infraestructura Azure se creará con Bicep en la feature `002-infra-bicep`; hasta entonces el despliegue se omite si falta el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN`.
 
 ## Requisitos
 
@@ -36,4 +36,6 @@ cd web && npm ci && npm run build && npm test
 cd api && npm ci && npm run build && npm test
 ```
 
-Más reglas de trabajo en `AGENTS.md`.
+## Cómo se trabaja
+
+El desarrollo se pide con issues de GitHub y lo hace Claude Code en GitHub Actions; Rafa revisa y fusiona todos los PRs. Reglas en `AGENTS.md` y principios en `.specify/memory/constitution.md`.

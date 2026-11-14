@@ -1,0 +1,42 @@
+# Zonas sensibles de la política de fusión (AGENTS.md, sección "Política de fusión").
+# Un PR que toque cualquiera de estas rutas lo fusiona siempre Rafa, nunca Claude.
+#
+# OJO: este archivo por sí solo no bloquea nada. Solo obliga si una regla de la rama `main`
+# exige revisión de code owners, y eso hoy no está activado (ver AGENTS.md).
+# Algunas rutas aún no existen (api/, web/, infra/ llegan con los PRs #3 y siguientes):
+# se dejan para que la regla valga en cuanto aparezcan.
+
+# La propia política y lo que controla a los agentes
+/AGENTS.md                              @rafmaresp
+/CLAUDE.md                              @rafmaresp
+/.github/                               @rafmaresp
+/.claude/                               @rafmaresp
+/.specify/                              @rafmaresp
+/docs/decisions/                        @rafmaresp
+
+# Funcionalidades nuevas completas (llevan spec)
+/specs/                                 @rafmaresp
+
+# Login, roles y permisos
+/api/src/**/auth*                       @rafmaresp
+/api/src/**/*usuario*                   @rafmaresp
+/api/src/**/*roles*                     @rafmaresp
+/api/src/**/*permis*                    @rafmaresp
+/web/src/app/**/*auth*                  @rafmaresp
+
+# Modelo de datos, auditoría y datos personales (RGPD)
+/api/src/**/*modelo*                    @rafmaresp
+/api/src/**/*repositorio*               @rafmaresp
+/api/src/lib/repo.*                     @rafmaresp
+/api/src/**/*auditor*                   @rafmaresp
+/api/src/**/*cosmos*                    @rafmaresp
+/data/                                  @rafmaresp
+/docs/rgpd/                             @rafmaresp
+
+# Capa restringida de redes (tuberías y cables)
+**/*redes*                              @rafmaresp
+
+# Infraestructura, configuración de despliegue y seguridad del front
+/infra/                                 @rafmaresp
+/api/host.json                          @rafmaresp
+/web/public/staticwebapp.config.json    @rafmaresp
