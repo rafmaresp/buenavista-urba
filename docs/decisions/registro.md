@@ -191,3 +191,23 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Flujo por issue en dos fases dentro del mismo PR: spec + plan + tareas → revisión de Rafa → `@claude implementa`. Errores y mejoras pequeñas, sin spec.
 - Se retira `pc-pr-guardrails` (comprobaba la convención de OpenSpec). Se mantiene `pc-quality-gates` (TruffleHog, Trivy, Semgrep, SBOM, tests): en un repo privado, el escaneo nativo de GitHub (CodeQL, secret scanning con push protection) es de pago (GitHub Code Security / Secret Protection; dato a confirmar con los precios actuales), así que no hay sustituto nativo a coste 0. Pendiente de que Rafa decida las capas nativas gratuitas (Dependabot, protección de rama, etc.).
 - Claude puede crear y etiquetar issues desde el proyecto en nombre de Rafa: se crean con su cuenta (`rafmaresp`), así que el filtro de actor del workflow los deja pasar sin abrirlo a nadie más.
+
+### 2026-11-13: Skills de criterio, revisor independiente y política de fusión (aún no activa)
+
+**By:** Rafa
+**What:** Se sustituye lo que aportaba el equipo de Squad por skills de criterio en el repo y un revisor automático; se escribe la política de fusión, pero no se activa.
+**Why:** Recuperar el criterio por rol (seguridad, tests, diseño) y una revisión hecha por alguien distinto del autor, con mucho menos coste que un equipo multiagente.
+- Skills en `.claude/skills/` (valen para el proyecto de Claude y para la Action): `disenar-cambio`, `escribir-tests`, `revisar-seguridad` y `revisar-pr`.
+- Revisor independiente: workflow `claude-revisor.yml`, con Opus 5.5 y la suscripción de Claude, que revisa cada PR no borrador, comenta los hallazgos y deja su check en rojo mientras los haya. La implementación sigue con Sonnet 5.5 (`claude.yml`).
+- Flujo ligero para funcionalidades pedidas desde el proyecto: Rafa aprueba en el chat un resumen de la spec y llega un único PR con spec, código y tests.
+- Política de fusión en `AGENTS.md`: Claude fusiona solo con CI en verde, revisor sin hallazgos y sin tocar zonas sensibles (listadas en `.github/CODEOWNERS`). **No activa**: hasta que Rafa la active, él fusiona todo y sigue vigente "sin auto-merge" de la constitución.
+- No se activa todavía ninguna protección de rama ni ruleset; queda propuesto en el PR. Fuera de esta decisión: subagentes con rol, Azurite/emulador, Playwright, Scorecard.
+
+### 2026-11-13: El repo pasa a ser público para poder proteger `main`
+
+**By:** Rafa
+**What:** `rafmaresp/buenavista-urba` se hará público (pendiente de que Rafa lo confirme y lo cambie). Motivo: en un repo privado del plan Free de GitHub no hay rulesets ni protección de rama, y sin ellos la política de fusión solo depende de que el agente la cumpla.
+**Why:** Coste 0 €. Con el repo público se puede exigir en `main` PR obligatorio y checks en verde, y se obtienen gratis CodeQL y secret scanning con push protection.
+- Antes de publicarlo se revisó el historial: sin secretos ni datos personales en el contenido. Los metadatos de algunos commits llevan el email personal de Rafa como autor.
+- La capa restringida de redes (planos de tuberías y cables) **nunca** se sube al repo.
+- Ruleset propuesto en `main`: PR obligatorio sin aprobaciones, checks requeridos, sin force-push ni borrado. La aprobación de code owners no se exige mientras los PRs salgan a nombre de Rafa.
