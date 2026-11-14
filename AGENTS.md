@@ -16,7 +16,8 @@ Stack decidido: Angular + Leaflet (PNOA/OSM) en `web/`, Azure Functions v4 en No
 ## Comandos del proyecto
 
 - Web (`web/`, Angular): `npm ci`, `npm run build`, `npm test`, `npm start`.
-- API (`api/`, Azure Functions v4, Node 22/TS): `npm ci`, `npm run build`, `npm test`, `npm start` (requiere Azure Functions Core Tools).
+- API (`api/`, Azure Functions v4, Node 22/TS): `npm ci`, `npm run build`, `npm test`, `npm start` (requiere Azure Functions Core Tools). La integración con Table Storage se ejecuta si existe `TABLES_CONNECTION` (en la CI, contra Azurite).
+- e2e (`e2e/`, Playwright contra la CLI de SWA): compila antes `web/` y `api/`, y luego `npm ci`, `npx playwright install chromium` y `npm test`. Cada funcionalidad con interfaz añade su fichero en `e2e/tests/`.
 - Antes de dar por hecho un cambio: build y test en verde en `web/` y `api/`.
 
 ## Cómo trabajar un issue

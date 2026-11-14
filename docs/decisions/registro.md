@@ -235,3 +235,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **By:** Rafa
 **What:** La Action (y Claude desde el proyecto) genera spec, plan y tareas ejecutando las skills `speckit-specify`, `speckit-plan` y `speckit-tasks`, y la implementación con `speckit-implement` y `speckit-converge`. No se escriben a mano ni se copia el formato de las specs migradas de OpenSpec (001 y 002).
 **Why:** En la prueba del issue #9, la Action escribió los tres ficheros a mano en 11 turnos: la spec se parecía a la plantilla, pero el plan y las tareas copiaron el formato de la spec 002, sin "Constitution Check" ni tareas numeradas. Trade-off aceptado: cada fase spec tarda más y gasta más cuota de la suscripción.
+
+### 2026-11-14: Azurite y Playwright en la CI desde ya
+
+**By:** Rafa
+**What:** Se adelanta la infraestructura de pruebas a antes del cambio 2. El job `api` de la CI arranca Azurite (Table) y ejecuta la integración con `@azure/data-tables`. Hay un job nuevo `e2e` con Playwright contra la CLI de SWA (web y API como en producción), en escritorio y móvil, con capturas e informe como artefacto.
+**Why:** Que cada funcionalidad llegue ya con su integración y su e2e. Hoy solo hay pruebas de humo: la página carga y `/api/health` responde.
+- El job `e2e` **no** es un check obligatorio del ruleset. Si Rafa lo quiere obligatorio, lo añade él al ruleset.
+- No se renombra ni se quita ninguno de los cuatro checks obligatorios.
