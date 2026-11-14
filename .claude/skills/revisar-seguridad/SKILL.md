@@ -18,7 +18,7 @@ Referencias: principios II, III y IV de `.specify/memory/constitution.md`, roles
 
 ## 2. Autorización en el servidor
 
-- El rol (`comunero` o `directiva`) se lee del contenedor `Usuarios` en cada petición, nunca del cliente (cuerpo, query, cabecera ni claims que manda Angular).
+- El rol (`comunero` o `directiva`) se lee de la tabla `Usuarios` en cada petición, nunca del cliente (cuerpo, query, cabecera ni claims que manda Angular).
 - Las acciones de directiva (cambiar estado, ver todas las incidencias, ver precisión, reubicar farolas, ocultar comentarios, capa de redes) comprueban `rol === 'directiva'` en la Function. Ocultar un botón en Angular no protege nada.
 - Las transiciones de estado se validan en servidor (solo hacia delante, sin reabrir Completado salvo que la spec diga otra cosa).
 - Busca IDOR: si un comunero manda el id de otro recurso, ¿lo puede leer o cambiar?
@@ -27,7 +27,7 @@ Referencias: principios II, III y IV de `.specify/memory/constitution.md`, roles
 
 - Visitante y comunero no reciben nunca el autor (`uid`), el email, el `sub` ni la precisión de las farolas. El comentario, solo la directiva y su autor.
 - Los votos devuelven recuento y "has votado", nunca quién votó.
-- Revisa los DTO de respuesta campo a campo: un `...entidad` que devuelve el documento entero de Cosmos es un fallo.
+- Revisa los DTO de respuesta campo a campo: un `...entidad` que devuelve la entidad entera de Table Storage es un fallo.
 
 ## 4. Datos personales (RGPD)
 
@@ -39,7 +39,7 @@ Referencias: principios II, III y IV de `.specify/memory/constitution.md`, roles
 ## 5. Entrada y escrituras
 
 - Valida tipo, longitud (comentario ≤ 280) y valores permitidos en servidor. Rechaza campos desconocidos en lugar de guardarlos.
-- Consultas a Cosmos siempre parametrizadas; nada de concatenar entrada del usuario en SQL.
+- Filtros de Table Storage siempre con la plantilla `odata` de `@azure/data-tables` (escapa los valores); nada de concatenar entrada del usuario en el filtro OData.
 - Los duplicados se impiden con escritura condicional (ETag o clave única), no con "leer y luego escribir".
 - Límite de peticiones por usuario en las escrituras.
 

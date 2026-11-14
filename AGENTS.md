@@ -11,7 +11,7 @@ Reglas para cualquier agente de IA que trabaje en este repo. El desarrollo se ha
 - RGPD: `docs/rgpd/propuesta-rgpd-v1.md`.
 - Datos de farolas (fuente de verdad): `data/farolas_buenavista.csv`.
 
-Stack decidido: Angular + Leaflet (PNOA/OSM) en `web/`, Azure Functions v4 en Node 22/TypeScript en `api/`, Azure Static Web Apps (plan Free), Cosmos DB con nivel gratuito, login con Google propio (GIS + `google-auth-library`). Nada de .NET, Google Maps, WhatsApp ni servicios de pago sin aprobación de Rafa. Objetivo de coste: 0–1 €/mes.
+Stack decidido: Angular + Leaflet (PNOA/OSM) en `web/`, Azure Functions v4 en Node 22/TypeScript en `api/`, Azure Static Web Apps (plan Free), Azure Table Storage (`@azure/data-tables`), login con Google propio (GIS + `google-auth-library`). Nada de .NET, Google Maps, WhatsApp ni servicios de pago sin aprobación de Rafa. Objetivo de coste: 0–1 €/mes.
 
 ## Comandos del proyecto
 
@@ -28,7 +28,7 @@ Lee el issue entero y los documentos de arriba que le afecten. Si es ambiguo o c
 ### Feature nueva (funcionalidad, API, datos, infraestructura): dos fases en el mismo PR
 
 1. **Fase spec** (issue con la etiqueta `claude`): sigue `speckit-specify` con el texto del issue, luego `speckit-plan` y `speckit-tasks`. Si `speckit-specify` deja marcas `[NEEDS CLARIFICATION]`, no inventes: lístalas como preguntas en el comentario del issue. **No escribas código de la aplicación en esta fase.** Termina con commits solo en `specs/NNN-nombre/`.
-2. Rafa abre el PR con el enlace de la Action, revisa spec, plan y tareas, y pide cambios con `@claude` en el PR.
+2. El workflow abre el PR (`Closes #<issue>`) y se lo asigna a Rafa. Rafa revisa spec, plan y tareas, y pide cambios con `@claude` en el PR.
 3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
 
 En cada ejecución empiezas con un checkout limpio. Antes de usar una skill sobre una feature existente, crea `.specify/feature.json` con `{"feature_directory":"specs/NNN-nombre"}` (está en `.gitignore`; no se sube).
@@ -53,7 +53,7 @@ Sin spec: corrige directamente con su test. Si al hacerlo cambia una regla de ne
 - Un issue = una rama = un PR de tamaño S o M (ver `docs/roadmap.md`). Si sale L, propón cómo partirlo en el issue antes de seguir.
 - Reutiliza antes de crear: busca helpers o componentes existentes y di cuál reutilizaste.
 - Ejecuta build y tests de lo que toques antes de terminar. Nunca desactives, saltes ni debilites tests para pasar a verde.
-- Al acabar, deja en el comentario: qué has hecho, cómo se prueba, qué queda pendiente y las dudas. El PR lo abre Rafa con el enlace que deja la Action; en su descripción va `Closes #<issue>`.
+- Al acabar, deja en el comentario: qué has hecho, cómo se prueba, qué queda pendiente y las dudas. No abras el PR tú: lo abre el paso final del workflow (con `Closes #<issue>`) y lo asigna a Rafa; si falta el secreto `PR_TOKEN`, Rafa lo abre con el enlace del comentario.
 
 ## Reglas fijas
 

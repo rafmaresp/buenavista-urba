@@ -18,7 +18,7 @@ Un test sirve si falla cuando la funcionalidad se rompe. Escribe pocos y que cue
 ## Cómo
 
 - Vitest (`npm test` en `web/` y `api/`). Las reglas de negocio van en funciones puras exportadas y se prueban sin el runtime de Functions; el trigger solo las envuelve.
-- Mockea solo los bordes: la verificación del token de Google (`google-auth-library`) y el cliente de Cosmos en unitarias. Desde el cambio 2, la integración va contra el emulador de Cosmos en la CI.
+- Mockea solo los bordes: la verificación del token de Google (`google-auth-library`) y el cliente de `@azure/data-tables` en unitarias. Desde el cambio 2, la integración va contra Azurite en la CI.
 - Datos de prueba ficticios: `uid` aleatorios y emails `@example.com`. Nunca datos reales de comuneros.
 - Cada test prepara su estado y no depende del orden de ejecución.
 
@@ -31,4 +31,4 @@ Un test sirve si falla cuando la funcionalidad se rompe. Escribe pocos y que cue
 
 ## Al terminar
 
-Ejecuta build y tests en `web/` y `api/`. En el comentario o el PR di qué requisitos de la spec quedan cubiertos por qué tests y cuáles no se han podido probar (por ejemplo, los 429 de Cosmos, que el emulador no reproduce).
+Ejecuta build y tests en `web/` y `api/`. En el comentario o el PR di qué requisitos de la spec quedan cubiertos por qué tests y cuáles no se han podido probar (por ejemplo, los límites y errores 503 de Table Storage, que Azurite no reproduce).

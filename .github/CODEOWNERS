@@ -29,7 +29,8 @@
 /api/src/**/*repositorio*               @rafmaresp
 /api/src/lib/repo.*                     @rafmaresp
 /api/src/**/*auditor*                   @rafmaresp
-/api/src/**/*cosmos*                    @rafmaresp
+/api/src/**/*tables*                    @rafmaresp
+/api/src/**/*storage*                   @rafmaresp
 /data/                                  @rafmaresp
 /docs/rgpd/                             @rafmaresp
 

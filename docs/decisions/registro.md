@@ -211,3 +211,13 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Antes de publicarlo se revisó el historial: sin secretos ni datos personales en el contenido. Los metadatos de algunos commits llevan el email personal de Rafa como autor.
 - La capa restringida de redes (planos de tuberías y cables) **nunca** se sube al repo.
 - Ruleset propuesto en `main`: PR obligatorio sin aprobaciones, checks requeridos, sin force-push ni borrado. La aprobación de code owners no se exige mientras los PRs salgan a nombre de Rafa.
+
+### 2026-11-14: Datos en Azure Table Storage (vuelta atrás de Cosmos DB); la Action abre el PR sola
+
+**By:** Rafa
+**What:** Los datos van en **Azure Table Storage** con `@azure/data-tables` (una tabla por entidad, declarada en Bicep). Revierte "Datos en Cosmos DB" del 2026-11-12 y vuelve a la decisión del stack del 2026-11-09. Además, el workflow `claude.yml` abre el PR de la rama de Claude, lo enlaza al issue (`Closes #n`) y se lo asigna a Rafa.
+**Why:**
+- Table Storage cuesta céntimos al mes con este volumen, sin la regla de una sola cuenta gratuita por suscripción ni capacidad en RU/s que gestionar, y Azurite (gratuito y ligero) sirve en local y en la CI.
+- Trade-off aceptado: Table Storage **no tiene tope duro de gasto** (Cosmos con nivel gratuito sí). Se acota con el presupuesto de 1 € y corte automático (que actúa con 8–24 h de retraso), un SAS limitado a entidades de Table y el límite de peticiones de la API. Sin Cosmos desaparecen la comprobación de nivel gratuito y el límite de 25 contenedores.
+- Actualizados `README.md`, `AGENTS.md`, la constitución, `docs/producto.md`, `docs/roadmap.md`, `specs/002-infra-bicep/` y las skills `escribir-tests` y `revisar-seguridad`.
+- PR automático: usa un token fine-grained de Rafa (secreto `PR_TOKEN`, solo este repo, Contents read, Pull requests write e Issues write) para que el PR dispare la CI y el revisor; con `GITHUB_TOKEN` no se dispararían. El PR sale a nombre de Rafa, así que GitHub no permite pedirle revisión a él mismo: la asignación hace de aviso. Sin el secreto, el workflow deja un aviso y sigue valiendo el enlace "Create PR".

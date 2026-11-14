@@ -1,24 +1,24 @@
-# Infraestructura con Bicep: SWA Free, Cosmos DB for NoSQL gratuito y corte automático de coste
+# Infraestructura con Bicep: SWA Free, Table Storage y corte automático de coste
 
-> Migrado de OpenSpec (`openspec/changes/infra-bicep`) el 2026-11-13. Contenido sin cambios; el formato no sigue aún la plantilla de Spec Kit.
+> Migrado de OpenSpec (`openspec/changes/infra-bicep`) el 2026-11-13. Reescrito el 2026-11-14 para **Azure Table Storage** (decisión de Rafa del 2026-11-14, que revierte Cosmos DB for NoSQL del 2026-11-12). El formato no sigue aún la plantilla de Spec Kit.
 
-Cambio 1b de [`docs/roadmap.md`](../../docs/roadmap.md), entre `scaffold-plataforma` (1) y `catalogo-farolas` (2). Decisiones de Rafa del 2026-11-12: ningún recurso sin presupuesto ni corte automático; datos en **Cosmos DB for NoSQL** con nivel gratuito, una base de datos con 1000 RU/s compartidas y un contenedor por entidad (sustituye a Cosmos DB for Table); facturación en euros.
+Cambio 1b de [`docs/roadmap.md`](../../docs/roadmap.md), entre `scaffold-plataforma` (1) y `catalogo-farolas` (2). Decisiones de Rafa: ningún recurso sin presupuesto ni corte automático (2026-11-12); datos en **Azure Table Storage** con `@azure/data-tables`, una tabla por entidad (2026-11-14); facturación en euros.
 
 ## Why
 
-El cambio 2 necesita una base de datos desplegada. Crear recursos a mano en el portal no deja rastro, no se revisa en un PR y no garantiza el tope de coste. Este cambio describe toda la infraestructura en Bicep, la despliega desde GitHub sin secretos de larga duración y pone un presupuesto de 1 €/mes que, si se alcanza, corta el acceso a los datos sin borrarlos.
+El cambio 2 necesita dónde guardar datos. Crear recursos a mano en el portal no deja rastro, no se revisa en un PR y no garantiza el tope de coste. Este cambio describe toda la infraestructura en Bicep, la despliega desde GitHub sin secretos de larga duración y pone un presupuesto de 1 €/mes que, si se alcanza, corta el acceso a los datos sin borrarlos.
 
 ## What Changes
 
 - **`infra/main.bicep`** (+ `infra/main.bicepparam` sin datos personales), desplegado en un grupo de recursos que crea Rafa:
-  - **Static Web App Free** (Europa Occidental), entornos de staging desactivados (sin previews de PR), app settings `COSMOS_CONNECTION` (cadena de conexión tomada en el despliegue, nunca en el repo) y `COSMOS_DATABASE`.
-  - **Cosmos DB for NoSQL**: `enableFreeTier: true`, `capacity.totalThroughputLimit: 1000`, una región UE, backup periódico por defecto, sin multirregión, sin almacén analítico, TLS 1.2, firewall "solo centros de datos de Azure", escritura de metadatos con clave desactivada.
-  - **Base de datos `buenavista`** (`sqlDatabases`) con **1000 RU/s manuales compartidas** (`options.throughput: 1000`). **Sin contenedores**: cada cambio declara en `infra/` los que necesita, sin RU/s dedicadas.
+  - **Static Web App Free** (Europa Occidental), entornos de staging desactivados (sin previews de PR), app setting `TABLES_CONNECTION` (cadena de conexión con un SAS de cuenta limitado a Table, generado en el despliegue, nunca en el repo).
+  - **Cuenta de Storage** `StorageV2`, `Standard_LRS`, una región UE, TLS 1.2, solo HTTPS, sin acceso público a blobs, sin replicación entre inquilinos. Solo se usa el servicio Table.
+  - **Sin tablas**: cada cambio declara en `infra/` las que necesita (`tableServices/tables`).
   - **Presupuesto** `Microsoft.Consumption/budgets` de 1 €/mes sobre el grupo de recursos: avisos al 50 % y al 100 %, real y previsto, al correo de Rafa (parámetro de despliegue).
-  - **Corte automático** al 100 % real: grupo de acciones → Logic App de consumo con identidad administrada → `publicNetworkAccess = Disabled` en la cuenta de Cosmos. No borra datos; reactivación manual documentada.
-- **`.github/workflows/infra.yml`**: OIDC, comprobación previa de nivel gratuito, `what-if` en los PR que tocan `infra/**`, despliegue manual (`workflow_dispatch`) con aprobación de Rafa.
+  - **Corte automático** al 100 % real: grupo de acciones → Logic App de consumo con identidad administrada → `publicNetworkAccess = Disabled` en la cuenta de Storage. No borra datos; reactivación manual documentada.
+- **`.github/workflows/infra.yml`**: OIDC, `what-if` en los PR que tocan `infra/**`, despliegue manual (`workflow_dispatch`) con aprobación de Rafa.
 - **Modificado `.github/workflows/azure-swa.yml`** (del cambio 1): obtiene el token de despliegue de la SWA por OIDC en lugar del secreto `AZURE_STATIC_WEB_APPS_API_TOKEN`; solo despliega en push a `main`, **nunca en `pull_request`**.
-- **`infra/README.md`**: pasos únicos de Rafa, despliegue, reactivación tras un corte, rotación de la clave y cómo añadir un contenedor.
+- **`infra/README.md`**: pasos únicos de Rafa, despliegue, reactivación tras un corte, renovación del SAS, rotación de claves y cómo añadir una tabla.
 
 ## Capabilities
 
@@ -28,24 +28,24 @@ El cambio 2 necesita una base de datos desplegada. Crear recursos a mano en el p
 
 ### Modified Capabilities
 
-- `plataforma`: el requisito "Despliegue en Static Web Apps Free" pasa de secreto copiado a mano a token obtenido por OIDC (requiere archivar antes `scaffold-plataforma`).
+- `plataforma`: el requisito "Despliegue en Static Web Apps Free" pasa de secreto copiado a mano a token obtenido por OIDC.
 
 ## Impact
 
 - **Código nuevo**: `infra/main.bicep`, `infra/main.bicepparam`, `infra/README.md`, `.github/workflows/infra.yml`. **Modificado**: `.github/workflows/azure-swa.yml`, `README.md` (enlace a `infra/README.md`). Sin código de aplicación.
-- **Azure**: SWA Free (0 €), Cosmos DB for NoSQL nivel gratuito (0 € dentro de 1000 RU/s y 25 GB), Logic App de consumo, grupo de acciones, presupuesto e identidades administradas (≈ 0,00 €/mes; ver `design.md`).
+- **Azure**: SWA Free (0 €), cuenta de Storage de pago por uso (céntimos al mes con el volumen previsto), Logic App de consumo, grupo de acciones, presupuesto e identidades administradas (ver `plan.md`).
 - **RGPD**: todo en región UE; ningún dato personal en el repo (el correo de avisos es un secreto del entorno de GitHub).
-- **Coste**: 0 €/mes esperado; tope duro de RU/s y corte al alcanzar 1 €.
+- **Coste**: ≈ 0,01 €/mes esperado (estimación); sin tope duro de transacciones, acotado por el presupuesto con corte y por el límite de peticiones de la API.
 
 ## Out of scope
 
-Blob Storage, proveedor de correo, Application Insights, previews de PR, contenedores (llegan con el cambio 2 y siguientes), emulador de Cosmos en la CI (se monta en el cambio 2), dominio propio, alertas de Azure Monitor distintas del presupuesto.
+Blob Storage (fotos), colas, proveedor de correo, Application Insights, previews de PR, tablas (llegan con el cambio 2 y siguientes), Azurite en la CI (se monta en el cambio 2), dominio propio, alertas de Azure Monitor distintas del presupuesto.
 
 ---
 
 # Requisitos
 
-> Migrado de OpenSpec (deltas de spec por capacidad). Formato: requisito + escenarios WHEN/THEN.
+> Formato: requisito + escenarios WHEN/THEN.
 
 ## Capacidad: infraestructura
 
@@ -56,70 +56,47 @@ Todos los recursos de Azure del proyecto SHALL declararse en `infra/` con Bicep 
 
 ##### Scenario: Despliegue reproducible
 - **WHEN** se despliega `infra/main.bicep` dos veces seguidas con los mismos parámetros
-- **THEN** el segundo `what-if` no muestra cambios
+- **THEN** el segundo `what-if` no muestra más cambios que la renovación del SAS en los app settings
 
 ##### Scenario: Sin secretos en el repositorio
 - **WHEN** se revisan `infra/` y los workflows
-- **THEN** no aparece ninguna clave, cadena de conexión, token ni dirección de correo
+- **THEN** no aparece ninguna clave, SAS, cadena de conexión, token ni dirección de correo
 
 #### Requirement: Static Web App Free sin previews
-La infraestructura SHALL crear una Static Web App de plan Free con los entornos de staging desactivados y con la cadena de conexión de Cosmos como app setting, obtenida durante el despliegue.
+La infraestructura SHALL crear una Static Web App de plan Free con los entornos de staging desactivados y con la cadena de conexión de Table Storage como app setting, obtenida durante el despliegue.
 
 ##### Scenario: App setting de datos
 - **WHEN** termina el despliegue
-- **THEN** la SWA tiene los app settings `COSMOS_CONNECTION` y `COSMOS_DATABASE` y el valor de la cadena de conexión no aparece en ningún output ni log del workflow
+- **THEN** la SWA tiene el app setting `TABLES_CONNECTION` y su valor no aparece en ningún output ni log del workflow
 
 ##### Scenario: Sin entornos de preview
 - **WHEN** se abre un pull request
 - **THEN** no se crea ningún entorno de staging en la SWA
 
-#### Requirement: Cosmos DB for NoSQL gratuito y con tope
-La cuenta de Cosmos DB SHALL usar la API de NoSQL, el nivel gratuito (`enableFreeTier: true`) y el tope de cuenta `totalThroughputLimit: 1000`, en una sola región UE, con backup periódico por defecto, TLS mínimo 1.2 y escritura de metadatos con clave desactivada. La cuenta MUST NOT tener multirregión, escrituras multirregión, backup continuo ni almacén analítico.
+#### Requirement: Cuenta de Storage barata y endurecida
+La cuenta SHALL ser `StorageV2` con `Standard_LRS` en una sola región UE, `minimumTlsVersion: TLS1_2`, `supportsHttpsTrafficOnly: true`, `allowBlobPublicAccess: false` y `allowCrossTenantReplication: false`. La cuenta MUST NOT usar redundancia geográfica, endpoints privados, Defender for Storage ni ninguna otra función de pago fijo.
 
 ##### Scenario: Propiedades de coste
 - **WHEN** se inspecciona la cuenta desplegada
-- **THEN** `enableFreeTier` es `true`, `capacity.totalThroughputLimit` es `1000`, `capabilities` no incluye `EnableTable`, hay una sola ubicación y el backup es periódico
+- **THEN** el SKU es `Standard_LRS`, hay una sola ubicación y no hay recursos de pago fijo asociados
 
-##### Scenario: Abuso de peticiones
-- **WHEN** las peticiones superan 1000 RU/s
-- **THEN** Cosmos responde 429 y no se factura capacidad adicional
+#### Requirement: Tablas declaradas en Bicep
+Las tablas SHALL declararse en `infra/` (`Microsoft.Storage/storageAccounts/tableServices/tables`) en el cambio que las necesite. Este cambio MUST NOT crear tablas. La aplicación MUST NOT crear ni borrar tablas en producción.
 
-#### Requirement: Base de datos con capacidad compartida
-La infraestructura SHALL crear una base de datos `buenavista` con 1000 RU/s manuales compartidas (`options.throughput: 1000`). Los contenedores SHALL declararse en `infra/` en el cambio que los necesite, sin RU/s dedicadas, y MUST NOT superar 25 en la base de datos. Este cambio MUST NOT crear contenedores.
-
-##### Scenario: Capacidad compartida
-- **WHEN** termina el despliegue
-- **THEN** la base de datos `buenavista` tiene 1000 RU/s manuales, o el workflow falla con un mensaje que lo indica
-
-##### Scenario: Contenedor con RU/s dedicadas
-- **WHEN** un cambio declara un contenedor con `options.throughput` o `options.autoscaleSettings`
-- **THEN** el despliegue falla porque la cuenta supera `totalThroughputLimit`, y la comprobación posterior al deploy también lo rechaza
-
-##### Scenario: Crear contenedores con la clave
-- **WHEN** alguien intenta crear o borrar un contenedor con la clave de la cuenta
-- **THEN** Cosmos rechaza la operación de metadatos
+##### Scenario: Crear o borrar tablas con la credencial de la app
+- **WHEN** alguien usa `TABLES_CONNECTION` para crear o borrar una tabla
+- **THEN** Storage rechaza la operación (el SAS no incluye el tipo de recurso contenedor)
 
 #### Requirement: Acceso restringido a los datos
-La cuenta de Cosmos SHALL aceptar conexiones solo desde centros de datos de Azure, más las IP de devs pasadas explícitamente como parámetro. La clave de la cuenta MUST vivir solo en los app settings de la SWA.
+La API SHALL acceder a Table Storage con un SAS de cuenta limitado al servicio Table y a entidades (sin tablas ni servicio), con permisos de leer, añadir, actualizar, borrar entidades y consultar, solo HTTPS y con caducidad. La clave de la cuenta MUST NOT salir de Azure ni guardarse en los app settings.
 
-##### Scenario: Conexión desde Internet doméstico
-- **WHEN** alguien con la cadena de conexión intenta acceder desde una IP fuera de Azure no listada
-- **THEN** Cosmos rechaza la conexión
+##### Scenario: Credencial filtrada
+- **WHEN** alguien obtiene `TABLES_CONNECTION`
+- **THEN** puede leer, modificar y borrar entidades (incluso todas, que equivale a perder los datos y la auditoría) hasta que caduque o se rote la clave, pero no puede borrar tablas ni acceder a blobs, colas o ficheros
 
 ##### Scenario: Conexión desde la API
-- **WHEN** una Function gestionada de la SWA lee un contenedor
+- **WHEN** una Function gestionada de la SWA lee una tabla
 - **THEN** la lectura funciona
-
-#### Requirement: Comprobación de nivel gratuito
-Antes de cada `what-if` o despliegue, el workflow MUST comprobar que ninguna otra cuenta de Cosmos de la suscripción usa el nivel gratuito y MUST fallar sin desplegar si alguna lo usa.
-
-##### Scenario: Otra cuenta gratuita en la suscripción
-- **WHEN** existe en la suscripción otra cuenta de Cosmos con `enableFreeTier: true`
-- **THEN** el workflow falla antes de desplegar y no se crea ninguna cuenta
-
-##### Scenario: Redespliegue de la propia cuenta
-- **WHEN** la única cuenta gratuita es la del proyecto
-- **THEN** la comprobación pasa
 
 #### Requirement: Presupuesto con avisos
 La infraestructura SHALL crear un presupuesto mensual de 1 € (la facturación es en euros) sobre el grupo de recursos con avisos por correo al 50 % y al 100 %, tanto de coste real como previsto. El destinatario MUST ser un parámetro seguro del despliegue.
@@ -133,11 +110,11 @@ La infraestructura SHALL crear un presupuesto mensual de 1 € (la facturación 
 - **THEN** se envía un correo y no se corta nada
 
 #### Requirement: Corte automático sin pérdida de datos
-Al alcanzar el 100 % del coste real, un mecanismo automático SHALL desactivar el acceso de red público de la cuenta de Cosmos. El corte MUST NOT borrar datos ni recursos, MUST ejecutarse con una identidad que no pueda leer las claves, y la reactivación SHALL ser manual y estar documentada. El mecanismo MUST NOT tener coste en reposo.
+Al alcanzar el 100 % del coste real, un mecanismo automático SHALL desactivar el acceso de red público de la cuenta de Storage. El corte MUST NOT borrar datos ni recursos, MUST ejecutarse con una identidad que no pueda leer las claves ni los datos, y la reactivación SHALL ser manual y estar documentada. El mecanismo MUST NOT tener coste en reposo.
 
 ##### Scenario: Presupuesto agotado
 - **WHEN** el coste real del mes alcanza el 100 %
-- **THEN** la cuenta pasa a `publicNetworkAccess: Disabled`, la API deja de acceder a los datos y los contenedores conservan todos sus documentos
+- **THEN** la cuenta pasa a `publicNetworkAccess: Disabled`, la API deja de acceder a los datos y las tablas conservan todas sus entidades
 
 ##### Scenario: Invocación no válida
 - **WHEN** el mecanismo de corte recibe una petición que no es una alerta de presupuesto
