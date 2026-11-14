@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Aviso de mantenimiento
+  version: 0.1.0
+paths:
+  /api/aviso:
+    get:
+      summary: Aviso vigente (anónimo, cacheable 60 s)
+      responses:
+        '200':
+          description: Aviso vigente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Aviso' }
+        '204':
+          description: No hay aviso vigente
+    put:
+      summary: Publicar o sustituir el aviso (solo directiva)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvisoEntrada' }
+      responses:
+        '200': { description: Publicado, content: { application/json: { schema: { $ref: '#/components/schemas/Aviso' } } } }
+        '400': { description: Texto o fecha no válidos }
+        '401': { description: Sin token válido }
+        '403': { description: Respuesta genérica si no es directiva }
+    delete:
+      summary: Quitar el aviso (solo directiva)
+      responses:
+        '204': { description: Quitado (también si no existía) }
+        '401': { description: Sin token válido }
+        '403': { description: Respuesta genérica si no es directiva }
+components:
+  schemas:
+    Aviso:
+      type: object
+      required: [fechaHora, texto]
+      properties:
+        fechaHora: { type: string, format: date-time }
+        texto: { type: string, minLength: 1, maxLength: 140 }
+    AvisoEntrada:
+      type: object
+      required: [fechaHora, texto]
+      properties:
+        fechaHora: { type: string, format: date-time }
+        texto: { type: string, minLength: 1, maxLength: 140 }
