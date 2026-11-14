@@ -23,6 +23,8 @@ Stack decidido: Angular + Leaflet (PNOA/OSM) en `web/`, Azure Functions v4 en No
 
 Se usa [Spec Kit](https://github.com/github/spec-kit) (v1.4.0, integración Claude): las skills `speckit-*` están en `.claude/skills/` y sus scripts en `.specify/scripts/bash/`. Cada feature vive en `specs/NNN-nombre/` (`spec.md`, `plan.md`, `tasks.md` y, si hace falta, `research.md`, `data-model.md`, `contracts/`).
 
+**Spec Kit estricto**: spec, plan y tareas se generan **siempre ejecutando las skills** `speckit-*` con la herramienta `Skill`, que usan las plantillas de `.specify/templates/` y sus scripts. No escribas `spec.md`, `plan.md` ni `tasks.md` a mano y no copies el formato de `specs/001-*` ni `specs/002-*`: se migraron de OpenSpec y no siguen las plantillas. En tu comentario, di qué skills has ejecutado.
+
 Lee el issue entero y los documentos de arriba que le afecten. Si es ambiguo o contradice la constitución, `docs/producto.md` o una decisión, **no sigas**: pregunta en un comentario y para.
 
 **Primero clasifica el issue** y di en tu comentario cuál has elegido:
@@ -36,14 +38,14 @@ Si dudas entre los dos, es feature nueva.
 
 ### Feature nueva (funcionalidad, API, datos, infraestructura): dos fases en el mismo PR
 
-1. **Fase spec** (issue con la etiqueta `claude`): aplica `disenar-cambio` y sigue `speckit-specify` con el texto del issue, luego `speckit-plan` y `speckit-tasks`. **No escribas código de la aplicación ni tests en esta fase.** Termina con commits solo en `specs/NNN-nombre/`. Tu comentario en el issue lleva:
+1. **Fase spec** (issue con la etiqueta `claude`): aplica `disenar-cambio` y ejecuta, en este orden, las skills `speckit-specify` (con el texto del issue), `speckit-plan` y `speckit-tasks`. **No escribas código de la aplicación ni tests en esta fase.** Termina con commits solo en `specs/NNN-nombre/`. Tu comentario en el issue lleva:
    - la spec resumida en cuatro a ocho líneas (qué hace, para quién, qué queda fuera);
    - las marcas `[NEEDS CLARIFICATION]` como preguntas numeradas, sin inventar respuestas;
    - la línea: "Para aprobar, comenta `@claude implementa` en el PR; para cambiar algo, comenta `@claude` con el cambio en el PR".
 
    Después **para**.
 2. El workflow abre el PR (`Closes #<issue>`) y se lo asigna a Rafa. Rafa revisa spec, plan y tareas, y pide cambios con `@claude` en el PR. Mientras no diga `implementa`, cada `@claude` en el PR solo toca `specs/NNN-nombre/`.
-3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR, o "implementa" en un comentario `@claude` del PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
+3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR, o "implementa" en un comentario `@claude` del PR): ejecuta la skill `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después la skill `speckit-converge` hasta que diga `Converged`.
 
 Una vez abierto el PR, la conversación sigue **en el PR**, no en el issue: cada `@claude` en el issue crearía otra rama. El workflow no ejecuta Claude para un `@claude` ni para la etiqueta `claude` en un issue que ya tiene un PR abierto: deja un comentario que lleva al PR.
 
@@ -55,7 +57,7 @@ Cuando Rafa pide una funcionalidad en el chat del proyecto de Claude (no en un i
 
 1. Claude aplica `disenar-cambio`, hace en el chat las preguntas que falten y resume la spec en cuatro a ocho líneas.
 2. Rafa responde "ok" o corrige. Esa respuesta sustituye a la revisión de la fase spec en el PR.
-3. Claude crea el issue con lo acordado y abre **un único PR** con spec, plan y tareas (`specs/NNN-nombre/`), código y tests, siguiendo las mismas skills `speckit-*`. La spec completa va en el PR para que Rafa la vea antes de fusionar.
+3. Claude crea el issue con lo acordado y abre **un único PR** con spec, plan y tareas (`specs/NNN-nombre/`), código y tests, ejecutando las mismas skills `speckit-*`. La spec completa va en el PR para que Rafa la vea antes de fusionar.
 
 El flujo de dos fases por etiqueta `claude` sigue igual para lo que se pida directamente en GitHub.
 
