@@ -35,6 +35,8 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      branch_name: ${{ steps.claude.outputs.branch_name }}
     permissions:
       contents: write
       pull-requests: write
@@ -63,17 +65,25 @@ jobs:
             --max-turns 120
             --allowedTools "Skill,Bash(.specify/scripts/bash/check-prerequisites.sh:*),Bash(.specify/scripts/bash/create-new-feature.sh:*),Bash(.specify/scripts/bash/resolve-template.sh:*),Bash(.specify/scripts/bash/setup-plan.sh:*),Bash(.specify/scripts/bash/setup-tasks.sh:*),Bash(npm ci:*),Bash(npm install:*),Bash(npm run:*),Bash(npm test:*),Bash(npx ng:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(node:*),Bash(ls:*),Bash(find:*),Bash(grep:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(diff:*),Bash(mkdir:*)"
 
-      # Abre el PR de la rama que deja Claude en un issue. Usa un token de Rafa (secreto PR_TOKEN,
-      # fine-grained, solo este repo: Contents read, Pull requests write e Issues write) para que el PR dispare
-      # la CI y el revisor; con GITHUB_TOKEN no se dispararían. Sin el secreto, deja un aviso y
-      # sigue valiendo el enlace "Create PR" del comentario.
+  # Abre el PR de la rama que deja Claude en un issue. Usa un token de Rafa (secreto PR_TOKEN,
+  # fine-grained, solo este repo: Contents read, Pull requests write e Issues write) para que
+  # el PR dispare la CI y el revisor; con GITHUB_TOKEN no se dispararían. Sin el secreto, deja
+  # un aviso y sigue valiendo el enlace "Create PR" del comentario.
+  # Job aparte, en un runner limpio y sin checkout: lo que Claude ejecutó en el job anterior
+  # (GITHUB_PATH, GITHUB_ENV, ~/.config) no llega aquí, y PR_TOKEN nunca está en el job de Claude.
+  abrir-pr:
+    needs: claude
+    if: >-
+      always() && needs.claude.outputs.branch_name != '' &&
+      (github.event_name == 'issues' || (github.event_name == 'issue_comment' && !github.event.issue.pull_request))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
       - name: Abrir PR
-        if: >-
-          always() && steps.claude.outputs.branch_name != '' &&
-          (github.event_name == 'issues' || (github.event_name == 'issue_comment' && !github.event.issue.pull_request))
         env:
           GH_TOKEN: ${{ secrets.PR_TOKEN }}
-          BRANCH: ${{ steps.claude.outputs.branch_name }}
+          BRANCH: ${{ needs.claude.outputs.branch_name }}
           BASE: ${{ github.event.repository.default_branch }}
           ISSUE: ${{ github.event.issue.number }}
           TITLE: ${{ github.event.issue.title }}
