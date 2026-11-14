@@ -45,7 +45,7 @@ Si dudas entre los dos, es feature nueva.
 2. El workflow abre el PR (`Closes #<issue>`) y se lo asigna a Rafa. Rafa revisa spec, plan y tareas, y pide cambios con `@claude` en el PR. Mientras no diga `implementa`, cada `@claude` en el PR solo toca `specs/NNN-nombre/`.
 3. **Fase implementación** (Rafa comenta `@claude implementa` en el PR, o "implementa" en un comentario `@claude` del PR): sigue `speckit-implement` sobre esa feature, marcando las tareas hechas en `tasks.md`, y después `speckit-converge` hasta que diga `Converged`.
 
-Una vez abierto el PR, la conversación sigue **en el PR**, no en el issue: cada `@claude` en el issue crearía otra rama. El workflow no ejecuta Claude para un `@claude` en un issue que ya tiene un PR abierto: deja un comentario que lleva al PR.
+Una vez abierto el PR, la conversación sigue **en el PR**, no en el issue: cada `@claude` en el issue crearía otra rama. El workflow no ejecuta Claude para un `@claude` ni para la etiqueta `claude` en un issue que ya tiene un PR abierto: deja un comentario que lleva al PR.
 
 En cada ejecución empiezas con un checkout limpio. Antes de usar una skill sobre una feature existente, crea `.specify/feature.json` con `{"feature_directory":"specs/NNN-nombre"}` (está en `.gitignore`; no se sube).
 
