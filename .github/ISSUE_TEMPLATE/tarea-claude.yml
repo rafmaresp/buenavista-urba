@@ -1,0 +1,37 @@
+name: Tarea para Claude
+description: Algo que Claude debe proponer o implementar. Añade la etiqueta `claude` cuando el issue esté listo para empezar.
+title: "[Tarea]: "
+body:
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      options:
+        - Feature nueva (Spec Kit - primero spec, plan y tareas; sin código)
+        - Implementar una feature con spec ya aprobada en specs/
+        - Corrección de error
+        - Mejora pequeña
+        - Documentación
+    validations:
+      required: true
+  - type: input
+    id: cambio
+    attributes:
+      label: Feature del roadmap
+      description: Nombre en `docs/roadmap.md` o carpeta de `specs/` (p. ej. `specs/003-catalogo-farolas`), si aplica.
+      placeholder: catalogo-farolas
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué quiero
+    validations:
+      required: true
+  - type: textarea
+    id: aceptacion
+    attributes:
+      label: Criterios de aceptación
+      description: Dado / Cuando / Entonces si es posible.
+  - type: textarea
+    id: limites
+    attributes:
+      label: Fuera de alcance o restricciones
