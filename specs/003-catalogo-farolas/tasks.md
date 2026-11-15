@@ -120,7 +120,7 @@ description: "Tareas del cambio 2: catálogo de farolas"
 
 - Setup (T001–T002) → Foundational (T003–T005) → US3 (T006–T007) → US2 (T008–T013) → US1 (T014–T016) → T017 → Polish.
 - US1 solo depende de Foundational para el código; para tener datos en un entorno necesita US2.
-- US2 depende de US3 (`conAuditoria`).
+- US2 depende de US3 (`auditar()`, usado por `RepositorioFarolas`).
 
 ### Parallel Opportunities
 
@@ -132,3 +132,14 @@ description: "Tareas del cambio 2: catálogo de farolas"
 2. US2: el catálogo se puede sembrar.
 3. US1: el catálogo se puede consultar (MVP visible para el mapa del cambio 3).
 4. Permisos, documentación y verificación en Azure (quickstart).
+
+---
+
+## Phase 8: Auditoría como efecto de la capa de datos (decisión de Rafa, 2026-11-15)
+
+- [X] T023 Crear `RepositorioFarolas` en `api/src/farolas-repo.ts`: `ids()` y `crear(farola, actor)` que valida la entrada, escribe, audita y, si la auditoría falla, deshace el alta (`AltaSinAuditar` si deshacer también falla) per FR-011 (contradicts)
+- [X] T024 Quitar `conAuditoria()` de `api/src/auditoria.ts` (`auditar()` recibe la entidad ya validada) y hacer que `api/src/carga-farolas.ts` y `api/src/scripts/cargar-farolas.ts` escriban solo a través del repositorio per FR-011 (contradicts)
+- [X] T025 [P] Unitarias en `api/src/farolas-repo.test.ts` (orden alta → auditoría, deshacer, `AltaSinAuditar`, actor inválido sin escritura, alta fallida sin auditoría) e integración en `api/src/carga-farolas.integration.test.ts` (auditoría rechazada → 0 farolas) per US3/AC6 (missing)
+- [X] T026 SAS de `Farolas` del workflow de carga a `rad` en `.github/workflows/cargar-farolas.yml` e `infra/README.md` per research §4 (partial)
+- [X] T027 Constitución III a 1.1.0 en `.specify/memory/constitution.md` y entrada en `docs/decisions/registro.md` per Constitution III (contradicts)
+

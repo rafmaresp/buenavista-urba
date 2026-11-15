@@ -93,25 +93,11 @@ export function entidadDeAuditoria(entrada: EntradaAuditoria, ahora: Date = new 
   };
 }
 
-/** Añade una entrada a Auditoria. Solo inserta: el SAS de la app no permite modificar ni borrar. */
-export async function auditar(
-  cliente: ClienteAuditoria,
-  entrada: EntradaAuditoria,
-  ahora: Date = new Date(),
-): Promise<void> {
-  await cliente.createEntity(entidadDeAuditoria(entrada, ahora));
-}
-
 /**
- * Audita y, solo si la auditoría se ha guardado, escribe (constitución III: si no se puede auditar,
- * no se escribe). Table Storage no tiene transacciones entre tablas: si la escritura falla después,
- * queda la entrada como rastro del intento.
+ * Añade una entrada (ya validada con entidadDeAuditoria) a Auditoria. Solo inserta: el SAS de la
+ * app no permite modificar ni borrar. No se llama desde las Functions: lo hacen los repositorios
+ * como efecto de cada escritura (ver farolas-repo.ts).
  */
-export async function conAuditoria<T>(
-  cliente: ClienteAuditoria,
-  entrada: EntradaAuditoria,
-  escribir: () => Promise<T>,
-): Promise<T> {
-  await auditar(cliente, entrada);
-  return escribir();
+export async function auditar(cliente: ClienteAuditoria, entidad: EntidadAuditoria): Promise<void> {
+  await cliente.createEntity(entidad);
 }

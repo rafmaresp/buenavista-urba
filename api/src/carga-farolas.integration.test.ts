@@ -3,16 +3,17 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cargarFarolas } from './carga-farolas';
 import { parsearSemilla } from './farolas';
+import { RepositorioFarolas } from './farolas-repo';
 import { clienteAdmin, clienteConSas, conTablasTemporales, contar, hayAzuriteConClave } from './pruebas/azurite';
 
 const semilla = parsearSemilla(readFileSync(join(__dirname, '..', '..', 'data', 'farolas_buenavista.csv'), 'utf8'));
 
-// Con los mismos permisos que el workflow "Cargar farolas": Farolas ra, Auditoria a.
-function clientesDeCarga(farolas: string, auditoria: string) {
-  return {
-    farolas: clienteConSas(farolas, { query: true, add: true }),
-    auditoria: clienteConSas(auditoria, { add: true }),
-  };
+// Con los mismos permisos que el workflow "Cargar farolas": Farolas rad, Auditoria a.
+function clientesDeCarga(farolas: string, auditoria: string): RepositorioFarolas {
+  return new RepositorioFarolas(
+    clienteConSas(farolas, { query: true, add: true, delete: true }),
+    clienteConSas(auditoria, { add: true }),
+  );
 }
 
 interface EntradaGuardada {
@@ -73,6 +74,19 @@ describe.runIf(hayAzuriteConClave)('carga de farolas (Azurite)', () => {
       for await (const e of clienteAdmin(auditoria!).listEntities<{ clave: string }>()) claves.push(e.clave);
       expect(claves).toHaveLength(69);
       expect(claves).not.toContain('F07');
+    });
+  });
+
+  it('si la auditoría se rechaza, la farola no queda dada de alta', async () => {
+    await conTablasTemporales(['Farolas', 'Auditoria'], async ([farolas, auditoria]) => {
+      // SAS de Auditoria sin permiso de añadir: la entrada se rechaza con 403.
+      const repo = new RepositorioFarolas(
+        clienteConSas(farolas!, { query: true, add: true, delete: true }),
+        clienteConSas(auditoria!, { query: true }),
+      );
+      await expect(cargarFarolas(repo, semilla)).rejects.toMatchObject({ statusCode: 403 });
+      expect(await contar(clienteAdmin(farolas!))).toBe(0);
+      expect(await contar(clienteAdmin(auditoria!))).toBe(0);
     });
   });
 });

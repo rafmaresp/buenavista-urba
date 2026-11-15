@@ -1,10 +1,12 @@
 // Carga (siembra) del catálogo de farolas. La lanza el workflow "Cargar farolas" con
-// FAROLAS_CONNECTION y AUDITORIA_CONNECTION (SAS de servicio de 1 h). Uso:
+// FAROLAS_CONNECTION (rad: deshacer un alta si su auditoría falla) y AUDITORIA_CONNECTION (a),
+// SAS de servicio de 1 h. Uso:
 //   node dist/scripts/cargar-farolas.js ../data/farolas_buenavista.csv
 // Solo imprime recuentos e ids de farola: nunca las cadenas de conexión.
 import { readFileSync } from 'node:fs';
 import { cargarFarolas } from '../carga-farolas';
 import { parsearSemilla } from '../farolas';
+import { RepositorioFarolas } from '../farolas-repo';
 import { tablaClient } from '../tablas';
 
 async function main(): Promise<void> {
@@ -12,10 +14,8 @@ async function main(): Promise<void> {
   if (!ruta) throw new Error('Uso: cargar-farolas <ruta del CSV>');
 
   const semilla = parsearSemilla(readFileSync(ruta, 'utf8'));
-  const resultado = await cargarFarolas(
-    { farolas: tablaClient('Farolas'), auditoria: tablaClient('Auditoria') },
-    semilla,
-  );
+  const repo = new RepositorioFarolas(tablaClient('Farolas'), tablaClient('Auditoria'));
+  const resultado = await cargarFarolas(repo, semilla);
   console.log(`Semilla: ${semilla.length} farolas. Ya existían: ${resultado.existentes}.`);
   console.log(`Altas: ${resultado.altas.length}${resultado.altas.length ? ` (${resultado.altas.join(', ')})` : ''}.`);
 }

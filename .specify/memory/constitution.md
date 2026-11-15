@@ -11,7 +11,7 @@ Ningún recurso de Azure ni servicio externo de pago se añade sin aprobación e
 Datos personales mínimos. Nada de emails, `sub`, tokens ni cuerpos de petición en logs, auditoría, fixtures o commits. La auditoría guarda un `uid` aleatorio, nunca el email. Sin cookies de rastreo ni analítica. Recursos en región UE. Referencia: `docs/rgpd/propuesta-rgpd-v1.md`.
 
 ### III. Toda escritura se audita
-Cada operación que escribe datos genera en la misma operación una entrada de auditoría (quién, qué, cuándo, antes, después), append-only. Si no se puede auditar, no se escribe. Cada feature que escribe incluye tests de la entrada generada.
+Cada operación que escribe datos genera, como efecto de esa misma operación, una entrada de auditoría (quién, qué, cuándo, antes, después), append-only. La auditoría la hace la capa de datos (un repositorio por tabla, única puerta de escritura): ninguna Function ni script la llama por su cuenta. Si la auditoría falla, el cambio se deshace y la operación falla. Cada feature que escribe incluye tests de la entrada generada y de que se deshace si la auditoría falla.
 
 ### IV. Autorización en el servidor
 El rol (comunero o directiva) y la pertenencia a la lista cerrada se comprueban en cada Function a partir del ID token de Google validado. El front solo muestra u oculta controles.
@@ -37,4 +37,4 @@ Angular + Leaflet (PNOA por defecto y OSM, autohospedados) en `web/`; Azure Func
 
 Esta constitución prevalece sobre cualquier otra práctica. Cambiarla requiere aprobación de Rafa en un PR que actualice también `docs/decisions/registro.md`. Cada plan comprueba su cumplimiento en la sección "Constitution Check"; una desviación se justifica en "Complexity Tracking".
 
-**Version**: 1.0.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-14
+**Version**: 1.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-15

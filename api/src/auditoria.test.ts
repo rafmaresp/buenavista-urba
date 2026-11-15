@@ -5,7 +5,6 @@ import {
   type EntradaAuditoria,
   actorValido,
   auditar,
-  conAuditoria,
   entidadDeAuditoria,
 } from './auditoria';
 
@@ -81,38 +80,8 @@ describe('auditar()', () => {
 
   it('inserta la entrada con createEntity (nunca upsert ni update)', async () => {
     const createEntity = vi.fn<(e: EntidadAuditoria) => Promise<unknown>>().mockResolvedValue({});
-    await auditar({ createEntity }, alta);
+    await auditar({ createEntity }, entidadDeAuditoria(alta));
     expect(createEntity).toHaveBeenCalledOnce();
     expect(createEntity.mock.calls[0]![0].clave).toBe('F07');
-  });
-
-  it('una entrada inválida no llega a la tabla', async () => {
-    const createEntity = vi.fn().mockResolvedValue({});
-    await expect(auditar({ createEntity }, { ...alta, actor: 'vecino@example.com' })).rejects.toThrow();
-    expect(createEntity).not.toHaveBeenCalled();
-  });
-});
-
-describe('conAuditoria()', () => {
-  it('audita antes de escribir', async () => {
-    const orden: string[] = [];
-    const createEntity = vi.fn(async () => orden.push('auditoria'));
-    await conAuditoria({ createEntity }, alta, async () => orden.push('escritura'));
-    expect(orden).toEqual(['auditoria', 'escritura']);
-  });
-
-  it('si la auditoría falla, no escribe el dato', async () => {
-    const createEntity = vi.fn().mockRejectedValue(new Error('Table no disponible'));
-    const escribir = vi.fn();
-    await expect(conAuditoria({ createEntity }, alta, escribir)).rejects.toThrow('Table no disponible');
-    expect(escribir).not.toHaveBeenCalled();
-  });
-
-  it('si la entrada es inválida, no escribe el dato', async () => {
-    const escribir = vi.fn();
-    await expect(
-      conAuditoria({ createEntity: vi.fn() }, { ...alta, despues: { comentario: 'x' } }, escribir),
-    ).rejects.toThrow(AuditoriaInvalida);
-    expect(escribir).not.toHaveBeenCalled();
   });
 });

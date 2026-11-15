@@ -6,7 +6,7 @@
 
 **Status**: Draft (resumen aprobado por Rafa en el chat del proyecto el 2026-11-15)
 
-**Input**: User description: "Catálogo de farolas (cambio 2 del roadmap, `catalogo-farolas`, issue #17). Las 70 farolas F01–F70 de Buenavista I pasan a la tabla `Farolas` y se exponen con `GET /api/farolas`, anónimo y cacheable 5 minutos, con id, calle, lat y lon y nunca la precisión. La carga inicial es una siembra tipo migración (workflow manual "Cargar farolas") que da de alta solo las farolas que faltan y nunca sobrescribe una existente. Toda escritura se audita con un módulo `auditar()` reutilizable (actor, acción, entidad, clave, antes, después, fecha; partición por mes; campos prohibidos; se audita antes de escribir). Opción A: un SAS de servicio por tabla; `Farolas` solo lectura para la app, `Auditoria` solo añadir y leer; se elimina el SAS de cuenta. F62 entra en el CSV como farola normal. Fuera: mapa, login, precisión para la directiva, reubicar (`PUT`) y crear (`POST`) farola, que van en el cambio 8."
+**Input**: User description: "Catálogo de farolas (cambio 2 del roadmap, `catalogo-farolas`, issue #17). Las 70 farolas F01–F70 de Buenavista I pasan a la tabla `Farolas` y se exponen con `GET /api/farolas`, anónimo y cacheable 5 minutos, con id, calle, lat y lon y nunca la precisión. La carga inicial es una siembra tipo migración (workflow manual "Cargar farolas") que da de alta solo las farolas que faltan y nunca sobrescribe una existente. Toda escritura se audita con un módulo `auditar()` reutilizable (actor, acción, entidad, clave, antes, después, fecha; partición por mes; campos prohibidos; la auditoría es un efecto de la propia escritura). Opción A: un SAS de servicio por tabla; `Farolas` solo lectura para la app, `Auditoria` solo añadir y leer; se elimina el SAS de cuenta. F62 entra en el CSV como farola normal. Fuera: mapa, login, precisión para la directiva, reubicar (`PUT`) y crear (`POST`) farola, que van en el cambio 8."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -60,14 +60,15 @@ Toda escritura de datos deja una entrada de auditoría (quién, qué, cuándo, a
 3. **Given** la credencial de la aplicación, **When** se intenta escribir en el catálogo de farolas, **Then** la operación se rechaza (la aplicación solo lee farolas en este cambio).
 4. **Given** un estado anterior o posterior con un campo prohibido (email, sub, nombre, comentario) o con un valor con forma de email, **When** se intenta auditar, **Then** se rechaza y la escritura de datos no se hace.
 5. **Given** un actor que no es `uid` opaco, `sistema:<nombre>` ni `dev:<alias>`, **When** se intenta auditar, **Then** se rechaza.
-6. **Given** que la auditoría falla, **When** se iba a escribir un dato, **Then** el dato no se escribe.
+6. **Given** que la auditoría falla, **When** se escribe un dato, **Then** el cambio se deshace y la operación falla: no queda ningún dato sin su entrada de auditoría.
+7. **Given** cualquier escritura, **When** se hace, **Then** la auditoría ocurre como efecto de la propia operación de datos, sin que quien escribe la invoque.
 
 ---
 
 ### Edge Cases
 
 - F62 no tiene coordenadas medidas: entra en la semilla como una farola más (posición `estimada`, punto medio de F61 y F63); su origen se documenta fuera de los datos.
-- La carga se interrumpe a mitad: al relanzarla da de alta solo las que faltan. Si quedó una entrada de auditoría de alta sin farola (la auditoría va antes que la escritura), la nueva ejecución añade otra entrada para esa farola; se acepta como rastro de un intento.
+- La carga se interrumpe a mitad: al relanzarla da de alta solo las que faltan. Si la auditoría de un alta falla, esa alta se deshace; si deshacerla también falla, la carga se detiene con un error que nombra la farola para revisarla a mano.
 - Dos cargas a la vez: la escritura de cada farola solo crea si no existe, así que la segunda falla para esa farola sin sobrescribir; la carga informa del conflicto.
 - La semilla incluye una segunda tabla (tramos entre farolas) tras una línea en blanco: la carga solo lee las farolas.
 - Catálogo vacío (infra desplegada pero carga no ejecutada): el catálogo devuelve una lista vacía, no un error.
@@ -86,7 +87,7 @@ Toda escritura de datos deja una entrada de auditoría (quién, qué, cuándo, a
 - **FR-008**: La carga MUST poder relanzarse sin efectos: una segunda ejecución no crea, modifica ni audita nada.
 - **FR-009**: Cada alta de la carga MUST auditarse con actor `sistema:carga`, acción de alta, entidad `Farolas`, la clave de la farola, sin estado anterior y con el estado posterior completo (incluida la precisión, que no es dato personal).
 - **FR-010**: La carga MUST lanzarse a mano desde GitHub en el entorno protegido de infraestructura, con una credencial temporal (≤ 1 h) limitada a las dos tablas, que nunca se guarda en el repo ni aparece en los registros.
-- **FR-011**: Toda escritura de datos MUST auditarse antes de hacerse; si la auditoría falla, la escritura MUST NOT hacerse.
+- **FR-011**: Toda escritura de datos MUST auditarse como efecto de la propia operación (la capa de datos audita; quien escribe no llama a la auditoría). Una entrada inválida MUST impedir la escritura; si la auditoría falla tras escribir, el cambio MUST deshacerse y la operación fallar.
 - **FR-012**: Cada entrada de auditoría MUST guardar actor, acción, entidad, clave, antes, después y fecha (UTC), agrupadas por mes (`AAAA-MM`) para poder purgarlas por meses.
 - **FR-013**: El actor MUST ser un `uid` opaco (UUID), `sistema:<nombre>` o `dev:<alias>`; cualquier otro valor se rechaza.
 - **FR-014**: La auditoría MUST rechazar estados anterior o posterior con campos prohibidos (email, sub, nombre, comentario, en cualquier nivel) o con valores con forma de email.

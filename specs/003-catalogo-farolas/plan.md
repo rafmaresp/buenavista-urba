@@ -6,7 +6,7 @@
 
 ## Summary
 
-Las 70 farolas pasan a la tabla `Farolas` de Table Storage, sembradas desde `data/farolas_buenavista.csv` por un script de `api/` que lanza a mano el workflow "Cargar farolas" (entorno `infra`, OIDC). `GET /api/farolas` las sirve sin sesión y sin precisión, con `Cache-Control: public, max-age=300`. Se crea el módulo `auditar()` (tabla `Auditoria`, partición `AAAA-MM`, campos prohibidos) que la carga usa antes de cada alta. Las credenciales pasan de un SAS de cuenta a un **SAS de servicio por tabla** (opción A): la app solo lee `Farolas` y solo añade y lee `Auditoria`.
+Las 70 farolas pasan a la tabla `Farolas` de Table Storage, sembradas desde `data/farolas_buenavista.csv` por un script de `api/` que lanza a mano el workflow "Cargar farolas" (entorno `infra`, OIDC). `GET /api/farolas` las sirve sin sesión y sin precisión, con `Cache-Control: public, max-age=300`. Se crea el módulo `auditar()` (tabla `Auditoria`, partición `AAAA-MM`, campos prohibidos) y `RepositorioFarolas`, única puerta de escritura de `Farolas`, que audita como efecto de cada operación y deshace si la auditoría falla. Las credenciales pasan de un SAS de cuenta a un **SAS de servicio por tabla** (opción A): la app solo lee `Farolas` y solo añade y lee `Auditoria`.
 
 ## Technical Context
 
@@ -36,7 +36,7 @@ Las 70 farolas pasan a la tabla `Farolas` de Table Storage, sembradas desde `dat
 |---|---|---|
 | I. Coste 0–1 €/mes | ✅ | Dos tablas en la cuenta existente; ningún recurso nuevo de pago. El workflow de carga usa minutos gratuitos de Actions (repo público). |
 | II. Privacidad por diseño | ✅ | Las farolas no son datos personales. `auditar()` rechaza email, sub, nombre, comentario y valores con forma de email; actor `sistema:carga`. SAS nunca en el repo ni en logs (enmascarados). Storage en `spaincentral`. |
-| III. Toda escritura se audita | ✅ | La carga audita cada alta antes de escribirla; si `auditar()` falla, no escribe. Tests de la entrada generada. El SAS de `Auditoria` (solo `ra`) hace la auditoría append-only también frente a la propia app. |
+| III. Toda escritura se audita | ✅ | `RepositorioFarolas` audita cada alta como efecto de la operación; si la auditoría falla, deshace el alta (constitución 1.1.0). Tests de la entrada generada. El SAS de `Auditoria` (solo `ra`) hace la auditoría append-only también frente a la propia app. |
 | IV. Autorización en el servidor | ✅ | No hay escrituras desde la API en este cambio: `GET /api/farolas` es público por `docs/producto.md` y el SAS de la app no permite escribir `Farolas`. `PUT`/`POST` esperan al login (cambio 4) y van en el cambio 8. |
 | V. Tests en la CI | ✅ | Unitarias + integración contra Azurite (desde este cambio, como pide la constitución). |
 | VI. Simplicidad, S/M | ✅ | Tamaño M estimado (~500 líneas sin specs ni lockfiles). Sin dependencias nuevas. |
@@ -66,7 +66,8 @@ api/src/
 ├── tablas.ts                 # nombres de tabla y clientes por app setting (FAROLAS_CONNECTION, AUDITORIA_CONNECTION)
 ├── auditoria.ts              # auditar(): validación de actor y campos prohibidos, clave AAAA-MM
 ├── farolas.ts                # parseo y validación del CSV, entidad Farola, listarFarolas()
-├── carga-farolas.ts          # cargarFarolas(): solo altas, auditadas
+├── farolas-repo.ts           # RepositorioFarolas: única escritura de Farolas, audita y deshace si falla
+├── carga-farolas.ts          # cargarFarolas(): solo altas, vía el repositorio
 ├── scripts/cargar-farolas.ts # punto de entrada del workflow (lee CSV y variables de entorno)
 ├── functions/farolas.ts      # GET /api/farolas
 ├── *.test.ts                 # unitarias

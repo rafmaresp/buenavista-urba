@@ -272,3 +272,12 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Nadie ejecuta scripts en local; el workflow reutiliza la identidad y la aprobación de `infra` con credenciales de 1 h.
 - "Una farola es una farola" (Rafa): sin casos especiales en el modelo.
 - Escribir farolas exige comprobar el rol de directiva, que llega con el login (cambio 4).
+
+### 2026-11-15: La auditoría es un efecto de la capa de datos
+
+**By:** Rafa
+**What:** La auditoría deja de ser una llamada que cada Function o script hace antes de escribir. Cada tabla tiene un repositorio (el primero, `RepositorioFarolas`) que es la única puerta de escritura y que audita como efecto de cada operación. El orden es: validar la entrada, escribir, auditar y, si la auditoría falla, deshacer el cambio y fallar. La constitución III pasa a la versión 1.1.0.
+**Why:** "Auditar tiene que ser un side effect de una acción" (Rafa). Si cada llamador tiene que acordarse de auditar, es frágil.
+- Table Storage no tiene transacciones entre tablas: el hueco se cierra deshaciendo. Si también falla deshacer, el repositorio lanza un error propio (`AltaSinAuditar`) para revisarlo a mano.
+- Descartado, servicio asíncrono con cola: las Functions de SWA Free solo atienden HTTP y Table Storage no tiene change feed; exigiría una Function App aparte de pago.
+- Deshacer un alta exige borrar: el SAS de `Farolas` del workflow de carga pasa a `rad`. El de la app sigue en `r` hasta el cambio 8.

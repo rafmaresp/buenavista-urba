@@ -57,7 +57,7 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 - Contenido mínimo: farola, estado, enlace; sin comentario. El email se lee de `Usuarios` al enviar y no se copia a colas, incidencias ni auditoría. Un fallo de envío no bloquea la operación.
 
 ### 7. Auditoría de todo
-- Toda escritura genera una entrada: quién, qué, cuándo, antes y después. Append-only, en la misma operación; si no se puede auditar, no se escribe.
+- Toda escritura genera una entrada: quién, qué, cuándo, antes y después. Append-only y como efecto de la propia escritura: la hace el repositorio de cada tabla, y si la auditoría falla el cambio se deshace.
 - `actor` = `uid`, `sistema:*` o `dev:<alias>`. **Prohibido en antes/después**: email, `sub`, nombre y texto del comentario (se audita `{presente, longitud}`), con test.
 - Clave de partición = mes (`AAAA-MM`) para purgar por meses. La consultan los devs; no hay vista en la app.
 

@@ -4,7 +4,7 @@ name: Cargar farolas
 # migración: solo da de alta las farolas que faltan, cada una auditada con actor sistema:carga, y
 # nunca toca una existente. Se puede relanzar sin efectos.
 # A mano, solo desde main y tras aprobar el entorno `infra`. Va después de "Infraestructura (Bicep)",
-# que crea las tablas. Credenciales: dos SAS de servicio de 1 h (Farolas ra, Auditoria a), enmascarados.
+# que crea las tablas. Credenciales: dos SAS de servicio de 1 h (Farolas rad, Auditoria a), enmascarados.
 on:
   workflow_dispatch:
 
@@ -54,7 +54,7 @@ jobs:
             az storage table generate-sas --name "$1" --permissions "$2" --expiry "$caduca" --https-only \
               --account-name "$cuenta" --account-key "$clave" -o tsv --only-show-errors
           }
-          sas_farolas=$(sas Farolas ra)
+          sas_farolas=$(sas Farolas rad)
           sas_auditoria=$(sas Auditoria a)
           echo "::add-mask::$sas_farolas"
           echo "::add-mask::$sas_auditoria"

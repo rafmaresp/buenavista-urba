@@ -103,7 +103,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
 - **Caducan un año después de cada despliegue.** Si nadie despliega en un año, la API pierde el acceso: despliega antes.
-- El workflow "Cargar farolas" no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: ra`, `Auditoria: a`), y los enmascara en el log.
+- El workflow "Cargar farolas" no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: rad`, con borrado solo para deshacer un alta cuya auditoría falle; `Auditoria: a`), y los enmascara en el log.
 - `main.bicep` sustituye **todos** los app settings de la SWA: cualquier otro setting de la app se declara ahí.
 
 ### Rotar claves (si el SAS se filtra)

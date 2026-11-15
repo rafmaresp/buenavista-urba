@@ -19,11 +19,12 @@
 - **Rationale**: la posición vigente vive en la tabla (reubicaciones del cambio 8); la semilla solo inicializa. `createEntity` protege también frente a dos cargas a la vez.
 - **Alternatives considered**: sincronizar el CSV (upsert): pisaría reubicaciones. Comparar y avisar de diferencias: útil, pero no pedido; se puede añadir si hace falta.
 
-## 4. Orden auditoría → escritura
+## 4. Auditoría como efecto de la capa de datos
 
-- **Decision**: primero `auditar()`, después la escritura. Si la escritura falla tras auditar, queda una entrada de un intento; la carga lo informa y, al relanzarla, vuelve a auditar y escribir.
-- **Rationale**: Table Storage no tiene transacciones entre tablas. La constitución dice "si no se puede auditar, no se escribe": auditar primero garantiza que no hay escrituras sin auditar; el coste es un posible rastro de intento, aceptable.
-- **Alternatives considered**: escribir y luego auditar con compensación (borrar si falla la auditoría): deja escrituras sin auditar si falla la compensación y necesita permiso de borrado.
+- **Decision** (Rafa, 2026-11-15, sustituye a "auditar antes de escribir"): un repositorio por tabla (`RepositorioFarolas`) es la única puerta de escritura y audita como efecto de cada operación, al estilo de un interceptor de `SaveChanges`. Orden: valida la entrada de auditoría → escribe → añade la entrada → si la auditoría falla, deshace la escritura y propaga el error (`AltaSinAuditar` si deshacer también falla).
+- **Rationale**: quien escribe (Function o script) no tiene que acordarse de auditar. Table Storage no tiene transacciones entre tablas, así que el hueco se cierra deshaciendo. El caso residual (fallan la auditoría y el deshacer) se señala con un error propio.
+- **Alternatives considered**: auditar antes de escribir (versión anterior): nunca deja cambios sin auditar, pero sí entradas de intentos fallidos y obliga a cada llamador a envolver la escritura. Servicio asíncrono con cola: las Functions de SWA Free solo tienen disparador HTTP y Table Storage no tiene change feed; exigiría una Function App aparte de pago.
+- **Permisos**: deshacer un alta exige borrar en `Farolas`, así que el SAS del workflow de carga es `rad`. El SAS de la app sigue en `r` porque la app no escribe todavía; el cambio 8 lo ampliará con lo que necesite para escribir y deshacer.
 
 ## 5. Clave de la entrada de auditoría
 
