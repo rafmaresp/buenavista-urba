@@ -309,3 +309,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **By:** Rafa
 **What:** En el cambio 4 (`login-roles`, `specs/005-login-roles/`) entra solo quien está en la tabla `Usuarios` (lista cerrada, roles `comunero` y `directiva`), como dice `docs/producto.md`. Se descarta "cualquier cuenta de Google es vecino y los admin van en una lista de correos en configuración", que aparecía en el resumen aprobado en el chat. No hay sesión propia en el servidor: la web guarda el ID token de Google en memoria y lo manda en la cabecera `X-Id-Token`, y cada Function no pública lo valida. Alta, baja y supresión de usuarios, el registro de actividades y la nota de umbral de la EIPD pasan a un cambio siguiente. Los usuarios de prueba del e2e llegan con el cambio 5.
 **Why:** Rafa eligió la lista cerrada en el hilo del login. Con ella nadie ajeno a la urbanización puede escribir, y es lo que pide la propuesta RGPD. `X-Id-Token` en lugar de `Authorization` porque hay informes de que SWA sustituye esa cabecera hacia la API gestionada.
+
+### 2026-11-15: Reportar y ver incidencias de farolas
+
+**By:** Rafa (spec resumida aprobada en el chat del proyecto)
+**What:** En el cambio `reportar-incidencia-farola` (`specs/006-reportar-incidencia-farola/`) comunero y directiva, con sesión, avisan de una farola fundida con comentario opcional (≤ 280) y la incidencia nace en `Nuevo`. Una farola con una incidencia abierta no admite otra (fila candado con inserción condicional en la tabla nueva `Incidencias`, SAS `rad`). `GET /api/incidencias` es anónimo y solo da farola, estado y fecha, como dice `docs/producto.md` para el visitante. Fuera: cambiar el estado, votos, ver el comentario (llega con la gestión de estados), baches, avisos por correo y reubicar farolas.
+**Why:** "Si eres comunero, poder poner una incidencia en una farola y luego poder verla" (Rafa).
+- Usuarios de prueba con sesión para el e2e: siguen pendientes (necesitan diseño revisado por Rai); el alta con identidad la prueban las unitarias y la integración contra Azurite.
+

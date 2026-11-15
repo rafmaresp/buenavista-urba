@@ -104,6 +104,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
   | `FAROLAS_CONNECTION` | `Farolas` | `r` (consultar) | La app solo lee el catálogo; el cambio 8 añadirá añadir y actualizar |
   | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
   | `USUARIOS_CONNECTION` | `Usuarios` | `ru` (consultar y actualizar) | La app solo fija el `sub` en el primer login; altas y bajas no van por la app |
+  | `INCIDENCIAS_CONNECTION` | `Incidencias` | `rad` (consultar, añadir y borrar) | La app da de alta incidencias; borrar solo para deshacer un alta cuya auditoría falle. El cambio de gestión de estados añadirá actualizar |
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
 - **Caducan un año después de cada despliegue de infraestructura.** Si en un año no cambia la infra, la API pierde el acceso: lanza **Desplegar infraestructura (Bicep)** a mano antes.
@@ -112,7 +113,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
 
 ### Rotar claves (si el SAS se filtra)
 
-Los SAS de tabla (`FAROLAS_CONNECTION`, `AUDITORIA_CONNECTION` y `USUARIOS_CONNECTION`) no usan política de acceso almacenada, así que solo se revocan regenerando la clave que los firma:
+Los SAS de tabla (`FAROLAS_CONNECTION`, `AUDITORIA_CONNECTION`, `USUARIOS_CONNECTION` e `INCIDENCIAS_CONNECTION`) no usan política de acceso almacenada, así que solo se revocan regenerando la clave que los firma:
 
 1. Regenera la clave que **no** firma (`key2`): `az storage account keys renew -g rg-buenavista-incidencias -n <cuenta> --key key2`.
 2. Cambia `sasKey` a `'key2'` en `main.bicepparam`, fusiona y despliega: la app pasa a los SAS de tabla firmados con `key2`.
