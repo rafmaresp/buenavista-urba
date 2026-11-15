@@ -78,7 +78,9 @@ Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage e
 
 1. Revisa la causa en el portal: Cost Management → Análisis de costes del grupo `rg-buenavista-incidencias`.
 2. Corrige la causa (por ejemplo, rota el SAS si se ha filtrado; ver abajo).
-3. Ejecuta **Desplegar infraestructura (Bicep)** (`infra-desplegar.yml`), que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+3. Ejecuta **a mano** **Desplegar infraestructura (Bicep)** (`infra-desplegar.yml`, *Run workflow* en `main`), que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+
+Mientras Storage esté cortado, un push a `main` con cambios de infra falla antes de desplegar (y no despliega la app): solo se reactiva a mano. Un push sin cambios de infra despliega la app normalmente.
 
 Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
 
