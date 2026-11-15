@@ -49,7 +49,7 @@ jobs:
             if [ "$estado" = success ]; then ref=${dep#*:}; break; fi
           done
           [ -n "$ref" ] && git merge-base --is-ancestor "$ref" "$GITHUB_SHA" 2>/dev/null || desplegar true "sin despliegue de infra previo válido"
-          if git diff --name-only "$ref" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
+          if git diff --name-only "$ref" "$GITHUB_SHA" | grep -vE '\.md$' | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
             desplegar true "cambios de infra desde ${ref:0:7}"
           fi
           desplegar false "sin cambios de infra desde ${ref:0:7}"

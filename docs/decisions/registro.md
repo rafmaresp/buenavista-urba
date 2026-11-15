@@ -303,3 +303,4 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **What:** Tras cada despliegue de la app, `azure-swa.yml` hace un GET anónimo a `/api/health` del entorno real (hasta 10 intentos); si no responde, el job queda en rojo.
 **Why:** "Los e2e no se hacen sobre el entorno real? no se verifica nunca que siga funcionando?" y "verificar lo más tontorrón de momento, el health por ejemplo" (Rafa). Los e2e de la CI usan la CLI de SWA y un emulador, así que no detectan un fallo de despliegue en Azure.
 - Limitación: `/api/health` no toca Storage, así que no detecta un SAS roto. Cuando haga falta, se amplía (por ejemplo, `/api/farolas` con 70 farolas) o se añaden e2e de solo lectura contra producción.
+- Los cambios solo de documentación (`*.md`) bajo `infra/` no cuentan como cambio de infraestructura: ni el what-if del PR ni el despliegue piden aprobación.
