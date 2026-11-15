@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
+      deployments: read
     outputs:
       infra: ${{ steps.mirar.outputs.infra }}
     steps:
@@ -39,18 +39,15 @@ jobs:
           # A mano, o sin referencia válida, se despliega todo.
           desplegar() { echo "infra=$1" >> "$GITHUB_OUTPUT"; echo "Infra: $1 ($2)"; exit 0; }
           [ "$GITHUB_EVENT_NAME" = push ] || desplegar true "lanzado a mano"
-          ultimo=""
-          # Automático: último run de este workflow cuyo job de infra terminó bien.
-          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/azure-swa.yml/runs?branch=main&status=completed&per_page=30" --jq '.workflow_runs[].id'); do
-            ok=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[] | select((.name | startswith("Infraestructura y farolas")) and .conclusion == "success")] | length')
-            if [ "$ok" -gt 0 ]; then
-              ultimo=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" --jq '"\(.created_at) \(.head_sha)"')
-              break
-            fi
+          # GitHub registra un despliegue del entorno `infra` por cada job que lo usa (llamado desde aquí o
+          # lanzado a mano); el más reciente desde main con estado success da el commit. Los what-if de
+          # infra.yml también usan `infra`, pero desde refs de PR: se descartan por ref.
+          ref=""
+          for dep in $(gh api --paginate "repos/$GITHUB_REPOSITORY/deployments?environment=infra&per_page=100" \
+                         --jq '.[] | select(.ref == "main" or .ref == "refs/heads/main") | "\(.id):\(.sha)"'); do
+            estado=$(gh api "repos/$GITHUB_REPOSITORY/deployments/${dep%%:*}/statuses?per_page=1" --jq '.[0].state // ""')
+            if [ "$estado" = success ]; then ref=${dep#*:}; break; fi
           done
-          # Manual: último run con éxito de infra-desplegar.yml; vale el más reciente de los dos.
-          manual=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/infra-desplegar.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0] // empty | "\(.created_at) \(.head_sha)"')
-          ref=$(printf '%s\n%s\n' "$ultimo" "$manual" | sort | tail -n1 | cut -d' ' -f2)
           [ -n "$ref" ] && git merge-base --is-ancestor "$ref" "$GITHUB_SHA" 2>/dev/null || desplegar true "sin despliegue de infra previo válido"
           if git diff --name-only "$ref" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
             desplegar true "cambios de infra desde ${ref:0:7}"
