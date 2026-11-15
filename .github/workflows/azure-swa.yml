@@ -60,8 +60,9 @@ jobs:
     if: needs.cambios.outputs.infra == 'true' && vars.AZURE_CLIENT_ID_INFRA != ''
     uses: ./.github/workflows/infra-desplegar.yml
     # Un workflow llamado no ve los secretos del repositorio si no se pasan: sin esto AVISOS_EMAIL
-    # llega vacío y el Bicep falla (BCP333).
-    secrets: inherit
+    # llega vacío y el Bicep falla (BCP333). Solo se pasa el que necesita (no `secrets: inherit`).
+    secrets:
+      AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
     permissions:
       contents: read
       id-token: write

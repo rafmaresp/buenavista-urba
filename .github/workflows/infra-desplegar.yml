@@ -6,6 +6,10 @@ name: Desplegar infraestructura (Bicep)
 # sirve para reactivar Storage tras un corte. El Bicep ya se validó en el PR (infra.yml).
 on:
   workflow_call:
+    secrets:
+      AVISOS_EMAIL:
+        description: Correo de los avisos del presupuesto (si el entorno infra tiene su propio secreto, manda ese).
+        required: false
   workflow_dispatch:
 
 permissions: {}
