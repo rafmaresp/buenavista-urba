@@ -63,6 +63,7 @@ jobs:
     # llega vacío y el Bicep falla (BCP333). Solo se pasa el que necesita (no `secrets: inherit`).
     secrets:
       AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
+      USUARIOS_ALTA: ${{ secrets.USUARIOS_ALTA }}
     permissions:
       contents: read
       id-token: write

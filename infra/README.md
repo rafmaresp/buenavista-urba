@@ -108,7 +108,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
 - **Caducan un año después de cada despliegue de infraestructura.** Si en un año no cambia la infra, la API pierde el acceso: lanza **Desplegar infraestructura (Bicep)** a mano antes.
-- La carga de farolas (dentro de **Desplegar infraestructura (Bicep)**) no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: rad`, con borrado solo para deshacer un alta cuya auditoría falle; `Auditoria: a`), y los enmascara en el log.
+- Las cargas de farolas y de usuarios (dentro de **Desplegar infraestructura (Bicep)**) no usan estos SAS: firman los suyos al vuelo, de 1 h (`Farolas: rad` y `Usuarios: rad`, con borrado solo para deshacer un alta cuya auditoría falle; `Auditoria: a`), y los enmascaran en el log.
 - `main.bicep` sustituye **todos** los app settings de la SWA: cualquier otro setting de la app se declara ahí.
 
 ### Rotar claves (si el SAS se filtra)
@@ -129,3 +129,20 @@ El login (spec `005-login-roles`) necesita un cliente OAuth de Google, gratuito.
 4. Copia el **Client ID** (`….apps.googleusercontent.com`; no es secreto, aparece en la página) en `param googleClientId` de `main.bicepparam`, fusiona y aprueba el despliegue de infra.
 
 Sin `googleClientId`, `/login` dice que el inicio de sesión no está disponible y las Functions no públicas responden 503 a peticiones con token.
+
+## Alta de usuarios (lista cerrada)
+
+Solo entra quien está en la tabla `Usuarios` (spec `007-alta-usuarios`). Los correos no van al repo, que es público: viven en un secreto del entorno `infra`.
+
+1. GitHub → **Settings → Environments → `infra` → Add environment secret**. Nombre `USUARIOS_ALTA`; valor, una línea `correo,rol` por usuario (`rol`: `comunero` o `directiva`):
+
+   ```text
+   persona@ejemplo.com,directiva
+   ```
+
+2. Lanza a mano **Desplegar infraestructura (Bicep)** (o espera al siguiente despliegue de infra) y aprueba el entorno. El resumen muestra **Carga de usuarios** con `Altas: N`.
+3. Para añadir a alguien, edita el secreto **añadiendo** su línea (GitHub no deja leerlo: guarda tu copia de la lista) y relánzalo. Quitar una línea **no** da de baja a nadie, y cambiar el rol de una línea no cambia el de un usuario existente: baja, supresión y cambio de rol llegan con el cambio 4d.
+4. Mientras el cliente OAuth esté en **Testing**, la cuenta también tiene que estar en *test users* (sección anterior).
+
+Cada alta queda auditada como `usuario.alta` con actor `sistema:carga` y el uid, sin correo. Una línea mal escrita hace fallar la carga sin escribir nada y el log dice solo su número de línea y el motivo.
+
