@@ -6,6 +6,10 @@ name: Desplegar infraestructura (Bicep)
 # sirve para reactivar Storage tras un corte. El Bicep ya se validó en el PR (infra.yml).
 on:
   workflow_call:
+    secrets:
+      AVISOS_EMAIL:
+        description: Correo de los avisos del presupuesto (si el entorno infra tiene su propio secreto, manda ese).
+        required: false
   workflow_dispatch:
 
 permissions: {}
@@ -62,6 +66,7 @@ jobs:
         env:
           AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
         run: |
+          test -n "$AVISOS_EMAIL" || { echo "::error::El secreto AVISOS_EMAIL llega vacío (¿falta en el entorno infra o en el repositorio?)"; exit 1; }
           CORTE_ROLE_ID=$(az role definition list --custom-role-only true --name "$CORTE_ROLE_NAME" --query "[0].name" -o tsv)
           test -n "$CORTE_ROLE_ID" || { echo "::error::No existe el rol \"$CORTE_ROLE_NAME\" (paso único de infra/README.md)"; exit 1; }
           export CORTE_ROLE_ID
