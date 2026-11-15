@@ -63,8 +63,8 @@ En GitHub (Settings del repo):
 Regla (decisión de Rafa del 2026-11-15): **solo un cambio de infraestructura de Azure pide su aprobación**; lo demás se despliega solo al fusionar en `main`.
 
 1. Un PR que toca `infra/**` valida el Bicep y, cuando Rafa aprueba el entorno `infra`, publica el `what-if` en el resumen del job (solo recursos y tipo de cambio: las propiedades llevarían el SAS y el correo).
-2. Al fusionar, **Despliegue Azure Static Web Apps** (`azure-swa.yml`) mira qué ha cambiado en el push:
-   - Si toca `infra/**`, `data/**` o `infra-desplegar.yml`: llama a **Desplegar infraestructura (Bicep)**, que espera la aprobación de Rafa en el entorno `infra` y en un solo job despliega el Bicep y siembra las farolas que falten (solo altas, cada una auditada con `sistema:carga`; si no falta ninguna dice "Altas: 0"). Si se rechaza o falla, la app no se despliega.
+2. Al fusionar, **Despliegue Azure Static Web Apps** (`azure-swa.yml`) mira qué ha cambiado desde el último commit con la infra desplegada bien (así un despliegue de infra rechazado, fallido o cancelado se vuelve a pedir en el siguiente push):
+   - Si cambió `infra/**`, `data/**` o `infra-desplegar.yml`: llama a **Desplegar infraestructura (Bicep)**, que espera la aprobación de Rafa en el entorno `infra` y en un solo job despliega el Bicep y siembra las farolas que falten (solo altas, cada una auditada con `sistema:carga`; si no falta ninguna dice "Altas: 0"). Si se rechaza o falla, la app no se despliega.
    - Siempre, al final: despliega la app (`web/` y `api/`) sin aprobación.
 3. A mano (*Run workflow* en `main`), **Desplegar infraestructura (Bicep)** sirve para reactivar Storage tras un corte o renovar los SAS.
 

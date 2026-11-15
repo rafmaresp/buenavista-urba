@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     outputs:
       infra: ${{ steps.mirar.outputs.infra }}
     steps:
@@ -31,17 +32,30 @@ jobs:
           fetch-depth: 0
       - id: mirar
         env:
-          ANTES: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # A mano, o sin commit anterior conocido, se despliega todo.
-          if [ "$GITHUB_EVENT_NAME" != push ] || ! git cat-file -e "${ANTES}^{commit}" 2>/dev/null; then
-            echo infra=true >> "$GITHUB_OUTPUT"; exit 0
+          # Compara con el último commit en el que la infra SÍ se desplegó bien (no con el push anterior),
+          # para que un despliegue de infra rechazado, fallido o cancelado no se pierda.
+          # A mano, o sin referencia válida, se despliega todo.
+          desplegar() { echo "infra=$1" >> "$GITHUB_OUTPUT"; echo "Infra: $1 ($2)"; exit 0; }
+          [ "$GITHUB_EVENT_NAME" = push ] || desplegar true "lanzado a mano"
+          ultimo=""
+          # Automático: último run de este workflow cuyo job de infra terminó bien.
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/azure-swa.yml/runs?branch=main&status=completed&per_page=30" --jq '.workflow_runs[].id'); do
+            ok=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[] | select((.name | startswith("Infraestructura y farolas")) and .conclusion == "success")] | length')
+            if [ "$ok" -gt 0 ]; then
+              ultimo=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" --jq '"\(.created_at) \(.head_sha)"')
+              break
+            fi
+          done
+          # Manual: último run con éxito de infra-desplegar.yml; vale el más reciente de los dos.
+          manual=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/infra-desplegar.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0] // empty | "\(.created_at) \(.head_sha)"')
+          ref=$(printf '%s\n%s\n' "$ultimo" "$manual" | sort | tail -n1 | cut -d' ' -f2)
+          [ -n "$ref" ] && git merge-base --is-ancestor "$ref" "$GITHUB_SHA" 2>/dev/null || desplegar true "sin despliegue de infra previo válido"
+          if git diff --name-only "$ref" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
+            desplegar true "cambios de infra desde ${ref:0:7}"
           fi
-          if git diff --name-only "$ANTES" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
-            echo infra=true >> "$GITHUB_OUTPUT"
-          else
-            echo infra=false >> "$GITHUB_OUTPUT"
-          fi
+          desplegar false "sin cambios de infra desde ${ref:0:7}"
 
   infra:
     name: Infraestructura y farolas
