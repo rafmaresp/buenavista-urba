@@ -34,7 +34,7 @@ app.http('incidencias', {
   },
 });
 
-// PUT no público y solo directiva (spec 007): el rol se comprueba en respuestaCambiarEstado().
+// PUT no público y solo directiva (spec 008): el rol se comprueba en respuestaCambiarEstado().
 app.http('incidencias-estado', {
   methods: ['PUT'],
   authLevel: 'anonymous',

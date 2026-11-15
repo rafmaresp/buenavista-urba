@@ -21,7 +21,7 @@ export type EstadoCarga = 'cargando' | 'ok' | 'error';
 /** Envía el aviso de una farola y devuelve su incidencia abierta (creada o existente). */
 export type Avisar = (farola: string, comentario: string) => Promise<IncidenciaPublica>;
 
-/** Cambia el estado de una incidencia y devuelve cómo queda (specs/007, solo directiva). */
+/** Cambia el estado de una incidencia y devuelve cómo queda (specs/008, solo directiva). */
 export type Cambiar = (incidencia: IncidenciaPublica, estado: EstadoIncidencia) => Promise<IncidenciaPublica>;
 
 export interface OpcionesFicha {

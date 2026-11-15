@@ -67,7 +67,7 @@ export async function respuestaCrear(
 }
 
 /**
- * PUT /api/incidencias/{id} (spec 007): solo la directiva cambia el estado. Identifica en cada
+ * PUT /api/incidencias/{id} (spec 008): solo la directiva cambia el estado. Identifica en cada
  * petición y comprueba el rol aquí, en el servidor (constitución IV); un comunero recibe el mismo
  * 403 genérico que quien no está en la lista. El cuerpo nunca se registra.
  */

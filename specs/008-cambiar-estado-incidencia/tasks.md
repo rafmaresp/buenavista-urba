@@ -5,7 +5,7 @@ description: "Task list for feature implementation"
 
 # Tasks: Cambiar el estado de una incidencia (directiva)
 
-**Input**: Design documents from `/specs/007-cambiar-estado-incidencia/`
+**Input**: Design documents from `/specs/008-cambiar-estado-incidencia/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api.md
 

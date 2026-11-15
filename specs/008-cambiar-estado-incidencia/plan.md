@@ -2,7 +2,7 @@
 
 **Branch**: `claude/project-thread-fx62nb` | **Date**: 2026-11-15 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/007-cambiar-estado-incidencia/spec.md`
+**Input**: Feature specification from `/specs/008-cambiar-estado-incidencia/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -50,7 +50,7 @@ Re-check tras el diseño: sin cambios, sin desviaciones.
 ### Documentation (this feature)
 
 ```text
-specs/007-cambiar-estado-incidencia/
+specs/008-cambiar-estado-incidencia/
 ├── plan.md
 ├── research.md
 ├── data-model.md

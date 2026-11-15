@@ -1,14 +1,17 @@
 name: Desplegar infraestructura (Bicep)
 
-# Despliega infra/main.bicep y después siembra las farolas que falten (solo altas, cada una auditada
-# con sistema:carga; relanzarlo dice "Altas: 0"). Un único job en el entorno `infra`, así que pide UNA
-# aprobación de Rafa. Lo llama azure-swa.yml en un push a main que toca infra/** o data/**; a mano
-# sirve para reactivar Storage tras un corte. El Bicep ya se validó en el PR (infra.yml).
+# Despliega infra/main.bicep y después siembra las farolas y los usuarios (secreto USUARIOS_ALTA) que
+# falten (solo altas, cada una auditada con sistema:carga; relanzarlo dice "Altas: 0"). Un único job
+# en el entorno `infra`, así que pide UNA aprobación de Rafa. Lo llama azure-swa.yml en un push a main
+# que toca infra/** o data/**; a mano sirve para reactivar Storage tras un corte o dar de alta usuarios. El Bicep ya se validó en el PR (infra.yml).
 on:
   workflow_call:
     secrets:
       AVISOS_EMAIL:
         description: Correo de los avisos del presupuesto (si el entorno infra tiene su propio secreto, manda ese).
+        required: false
+      USUARIOS_ALTA:
+        description: Lista de altas "correo,rol" por línea (specs/007-alta-usuarios); manda la del entorno infra.
         required: false
   workflow_dispatch:
 
@@ -92,13 +95,17 @@ jobs:
             az storage table generate-sas --name "$1" --permissions "$2" --expiry "$caduca" --https-only \
               --account-name "$cuenta" --account-key "$clave" -o tsv --only-show-errors
           }
-          # Farolas rad: el borrado solo deshace un alta cuya auditoría falle. Auditoria a: solo añadir.
+          # Farolas y Usuarios rad: el borrado solo deshace un alta cuya auditoría falle (la app sigue
+          # con Usuarios ru). Auditoria a: solo añadir.
           sas_farolas=$(sas Farolas rad)
+          sas_usuarios=$(sas Usuarios rad)
           sas_auditoria=$(sas Auditoria a)
           echo "::add-mask::$sas_farolas"
+          echo "::add-mask::$sas_usuarios"
           echo "::add-mask::$sas_auditoria"
           {
             echo "FAROLAS_CONNECTION=TableEndpoint=${endpoint};SharedAccessSignature=${sas_farolas}"
+            echo "USUARIOS_CONNECTION=TableEndpoint=${endpoint};SharedAccessSignature=${sas_usuarios}"
             echo "AUDITORIA_CONNECTION=TableEndpoint=${endpoint};SharedAccessSignature=${sas_auditoria}"
           } >> "$GITHUB_ENV"
       - name: Cargar farolas (solo altas)
@@ -108,5 +115,17 @@ jobs:
           node dist/scripts/cargar-farolas.js ../data/farolas_buenavista.csv | tee salida.txt
           {
             echo '## Carga de farolas'
+            sed 's/^/    /' salida.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Cargar usuarios (solo altas)
+        working-directory: api
+        env:
+          # Secreto del entorno infra: nunca se imprime (GitHub lo enmascara y el script solo da recuentos).
+          USUARIOS_ALTA: ${{ secrets.USUARIOS_ALTA }}
+        run: |
+          set -o pipefail
+          node dist/scripts/cargar-usuarios.js | tee salida.txt
+          {
+            echo '## Carga de usuarios'
             sed 's/^/    /' salida.txt
           } >> "$GITHUB_STEP_SUMMARY"

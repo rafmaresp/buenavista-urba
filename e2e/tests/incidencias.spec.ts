@@ -49,7 +49,7 @@ test('la API real exige identidad para avisar', async ({ request }) => {
   expect(await r.json()).toEqual({ error: 'no-autenticado' });
 });
 
-// Cambiar el estado (specs/007-cambiar-estado-incidencia): solo directiva. Sin usuarios de prueba con
+// Cambiar el estado (specs/008-cambiar-estado-incidencia): solo directiva. Sin usuarios de prueba con
 // sesión, aquí se prueba que la API real exige identidad y que sin sesión no hay selector; el resto lo
 // cubren api/ (unitarias y Azurite) y web/ (ficha con rol directiva).
 test('sin sesión la ficha con incidencia no ofrece cambiar el estado', async ({ page }) => {

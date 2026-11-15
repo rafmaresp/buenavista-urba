@@ -58,7 +58,7 @@ describe('Incidencias (Azurite)', () => {
     });
   });
 
-  it.runIf(hayAzuriteConClave)('la directiva avanza y completa una incidencia; la farola vuelve a admitir avisos (spec 007)', async () => {
+  it.runIf(hayAzuriteConClave)('la directiva avanza y completa una incidencia; la farola vuelve a admitir avisos (spec 008)', async () => {
     await conTablasTemporales(['Incidencias', 'Auditoria'], async ([incidencias, auditoria]) => {
       const r = repo(incidencias!, auditoria!);
       const creada = await r.crear({ farola: 'F07', comentario: 'Texto de prueba', autor: UID_ANA });
@@ -86,7 +86,7 @@ describe('Incidencias (Azurite)', () => {
     });
   });
 
-  it.runIf(hayAzuriteConClave)('dos cambios simultáneos sobre la misma incidencia: solo uno gana (spec 007)', async () => {
+  it.runIf(hayAzuriteConClave)('dos cambios simultáneos sobre la misma incidencia: solo uno gana (spec 008)', async () => {
     await conTablasTemporales(['Incidencias', 'Auditoria'], async ([incidencias, auditoria]) => {
       const r = repo(incidencias!, auditoria!);
       const creada = await r.crear({ farola: 'F12', comentario: '', autor: UID_ANA });

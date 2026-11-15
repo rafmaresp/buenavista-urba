@@ -192,7 +192,7 @@ describe('contenidoFicha', () => {
   });
 });
 
-describe('MapaFarolas — cambiar estado (specs/007)', () => {
+describe('MapaFarolas — cambiar estado (specs/008)', () => {
   beforeEach(() => TestBed.configureTestingModule({ imports: [MapaFarolas] }));
 
   function comoRol(rol: 'comunero' | 'directiva') {

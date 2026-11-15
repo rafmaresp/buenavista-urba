@@ -128,7 +128,7 @@ var usuariosSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var usuariosSas = contains(usuariosSasToken, 'tn=') ? usuariosSasToken : '${usuariosSasToken}&tn=${tablaUsuarios.name}'
 
-// Incidencias: la app lee, da de alta y actualiza el estado (spec 007, solo directiva); borra el
+// Incidencias: la app lee, da de alta y actualiza el estado (spec 008, solo directiva); borra el
 // candado al completar y para deshacer una escritura cuya auditoría falló.
 var incidenciasSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaIncidencias.name)}'
