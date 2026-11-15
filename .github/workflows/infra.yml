@@ -1,0 +1,114 @@
+name: Infraestructura (Bicep)
+
+# - PR que toca infra/**: valida el Bicep (sin Azure) y, tras la aprobación de Rafa en el entorno
+#   `infra`, ejecuta what-if por OIDC. No despliega nada.
+# - A mano (workflow_dispatch) desde main: despliega. También reactiva Storage tras un corte.
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RG: rg-buenavista-incidencias
+  CORTE_ROLE_NAME: Buenavista corte de Storage
+
+jobs:
+  validar:
+    name: Bicep (build y lint)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build y lint sin avisos
+        env:
+          # Valores de ejemplo, solo para compilar los parámetros.
+          AVISOS_EMAIL: avisos@example.com
+          CORTE_ROLE_ID: 00000000-0000-0000-0000-000000000000
+        run: |
+          az bicep install --only-show-errors
+          az bicep version --only-show-errors
+          salida=$( { az bicep lint --file infra/main.bicep && az bicep build --file infra/main.bicep --stdout > /dev/null && az bicep build-params --file infra/main.bicepparam --stdout > /dev/null; } 2>&1 ) || { echo "$salida"; exit 1; }
+          echo "$salida"
+          if grep -qE ': (Warning|Error) ' <<<"$salida"; then
+            echo "::error::El Bicep tiene avisos o errores"
+            exit 1
+          fi
+
+  what-if:
+    name: What-if (Azure)
+    needs: validar
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.AZURE_CLIENT_ID_INFRA != ''
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_INFRA }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: What-if
+        env:
+          AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
+        run: |
+          CORTE_ROLE_ID=$(az role definition list --custom-role-only true --name "$CORTE_ROLE_NAME" --query "[0].name" -o tsv)
+          test -n "$CORTE_ROLE_ID" || { echo "::error::No existe el rol \"$CORTE_ROLE_NAME\" (paso único de infra/README.md)"; exit 1; }
+          export CORTE_ROLE_ID
+          # ResourceIdOnly: solo recursos y tipo de cambio. Las propiedades incluirían el SAS y el correo.
+          {
+            echo '## What-if de la infraestructura'
+            echo '```'
+            az deployment group what-if -g "$RG" --parameters infra/main.bicepparam \
+              --result-format ResourceIdOnly --no-pretty-print --only-show-errors \
+              --query "changes[].{cambio:changeType, recurso:resourceId}" -o table
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  desplegar:
+    name: Desplegar (Azure)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validar
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_INFRA }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Desplegar
+        env:
+          AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
+        run: |
+          CORTE_ROLE_ID=$(az role definition list --custom-role-only true --name "$CORTE_ROLE_NAME" --query "[0].name" -o tsv)
+          test -n "$CORTE_ROLE_ID" || { echo "::error::No existe el rol \"$CORTE_ROLE_NAME\" (paso único de infra/README.md)"; exit 1; }
+          export CORTE_ROLE_ID
+          # -o none: la salida completa del despliegue no se imprime; solo los outputs (sin secretos).
+          az deployment group create -g "$RG" -n "infra-${GITHUB_RUN_ID}" \
+            --parameters infra/main.bicepparam --only-show-errors -o none
+          {
+            echo '## Infraestructura desplegada'
+            az deployment group show -g "$RG" -n "infra-${GITHUB_RUN_ID}" \
+              --query "properties.outputs.{swa:swaName.value, url:swaHostname.value, storage:storageName.value}" -o table | sed 's/^/    /'
+            echo
+            echo 'El SAS de datos caduca dentro de un año: vuelve a desplegar antes (infra/README.md).'
+          } >> "$GITHUB_STEP_SUMMARY"

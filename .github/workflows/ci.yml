@@ -45,7 +45,16 @@ jobs:
       - name: Arrancar Azurite (Table)
         working-directory: .
         run: |
-          docker run -d --name azurite -p 10002:10002 \
+          # Cuenta con clave aleatoria en cada ejecución: ninguna clave en el repo. La prueba del SAS
+          # de producción (solo entidades) necesita el nombre y la clave para firmarlo.
+          key=$(openssl rand -base64 64 | tr -d '\n')
+          echo "::add-mask::$key"
+          {
+            echo "TABLES_ACCOUNT_NAME=bvtest"
+            echo "TABLES_ACCOUNT_KEY=$key"
+            echo "TABLES_CONNECTION=DefaultEndpointsProtocol=http;AccountName=bvtest;AccountKey=$key;TableEndpoint=http://127.0.0.1:10002/bvtest;"
+          } >> "$GITHUB_ENV"
+          docker run -d --name azurite -p 10002:10002 -e "AZURITE_ACCOUNTS=bvtest:$key" \
             mcr.microsoft.com/azure-storage/azurite:3.35.0 \
             azurite-table --tableHost 0.0.0.0 --skipApiVersionCheck
           for i in $(seq 1 30); do
@@ -58,7 +67,6 @@ jobs:
       - run: npm run build
       - run: npm test
         env:
-          TABLES_CONNECTION: UseDevelopmentStorage=true
           REQUIRE_AZURITE: "1"
 
   # e2e con Playwright contra la CLI de SWA (web + API como en producción).
