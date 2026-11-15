@@ -94,7 +94,7 @@ Cada PR no borrador lo revisa otro Claude en contexto limpio (`.github/workflows
 
 Cuando esté activa, Claude puede fusionar un PR **solo si se cumplen las tres condiciones**:
 
-1. **CI en verde**: todos los checks del PR pasan (`pc-quality-gates` y build/tests de `web/` y `api/`).
+1. **CI en verde**: todos los checks del PR pasan (los del workflow `CI`: los cuatro obligatorios del ruleset, con build y tests de `web/` y `api/` en `Tests & coverage floor`).
 2. **Revisor sin hallazgos abiertos**: el check **Revisor independiente** está en verde sobre el último commit.
 3. **Sin zonas sensibles**: ningún archivo del PR está en las rutas de `.github/CODEOWNERS`, y el PR no cae en ninguno de los casos de la tabla.
 

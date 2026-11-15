@@ -258,3 +258,10 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** Rafa necesita probar la CI/CD ahora y la petición de acceso puede tardar días.
 - **Sin datos reales ni vecinos** mientras la SWA esté en `eastus2`: las Functions gestionadas tratarían datos personales fuera de la UE, en contra de la constitución y de `docs/rgpd/`.
 - Al tener acceso a `westeurope`: borrar la SWA, volver `swaLocation` a `westeurope` y desplegar. La región de una SWA no se puede cambiar, así que se recrea y la URL cambia.
+
+### 2026-11-15: Menos checks por PR
+
+**By:** Rafa
+**What:** `ci.yml` y `pc-quality-gates.yml` se unifican en un solo workflow `CI`. Se mantienen los cuatro checks obligatorios con el mismo nombre. `Tests & coverage floor` hace ahora build y tests de `web/` y `api/` (la API contra Azurite) con cobertura de líneas real y un umbral del 80 % en `quality.config.json`; desaparecen los jobs `web` y `api`, que repetían esos tests. Se quita el job SBOM (Syft). El despliegue manual de infraestructura pasa a `infra-desplegar.yml`, así que los PR de `infra/**` ya no muestran "Desplegar" en skipped. `claude.yml` no cambia: sus jobs en skipped se aceptan.
+**Why:** Rafa contaba unos 20 checks por PR y solo la mitad hacía algo.
+- Umbral 80 % sobre el total de líneas de `web/src` y `api/src` (incluidos los archivos sin test; fuera `main.ts`). Hoy: web 66,7 % (2/3, falta `app.config.ts`), API 100 %; con el catálogo de farolas (PR #18) la API queda en un 88,5 %. Los mínimos solo suben.
