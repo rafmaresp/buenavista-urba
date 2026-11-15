@@ -1,0 +1,15 @@
+<section class="mapa" aria-label="Mapa de farolas">
+  <div #contenedor class="mapa__lienzo"></div>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mapa__aviso" role="status">Cargando farolas…</p>
+    }
+    @case ('error') {
+      <div class="mapa__aviso mapa__aviso--error" role="alert">
+        <p>No se pudieron cargar las farolas.</p>
+        <button type="button" (click)="cargar()">Reintentar</button>
+      </div>
+    }
+  }
+</section>

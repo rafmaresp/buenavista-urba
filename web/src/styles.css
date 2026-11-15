@@ -1,0 +1,158 @@
+/* Estilos globales. Sin estilos de componente: Angular los inyecta en línea y la CSP los bloquea. */
+:root {
+  --azul: #2a4b8d;
+  --amarillo: #f5c518;
+  --texto: #1d2433;
+  --fondo: #ffffff;
+  --error: #b3261e;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.cabecera {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--azul);
+  color: #fff;
+}
+
+.cabecera h1 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* Sesión en la cabecera (spec 005-login-roles). */
+.sesion,
+.sesion a,
+.sesion button {
+  color: #fff;
+  font: inherit;
+}
+
+.sesion button {
+  background: none;
+  border: 1px solid #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* La ruta '' solo envuelve al mapa: que no rompa el flex de app-root. */
+app-inicio {
+  display: contents;
+}
+
+/* Páginas de texto (login y privacidad): ocupan el resto y hacen scroll. */
+app-login,
+app-privacidad {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: block;
+  padding: 12px 16px;
+  max-width: 720px;
+}
+
+/* Mapa a pantalla completa (móvil primero). */
+app-mapa-farolas {
+  flex: 1;
+  min-height: 0;
+  display: block;
+}
+
+.mapa {
+  position: relative;
+  height: 100%;
+}
+
+.mapa__lienzo {
+  position: absolute;
+  inset: 0;
+}
+
+.mapa__aviso {
+  position: absolute;
+  z-index: 1000;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--fondo);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  text-align: center;
+}
+
+.mapa__aviso--error {
+  border: 2px solid var(--error);
+}
+
+.mapa__aviso--error p {
+  margin: 0 0 8px;
+  color: var(--error);
+  font-weight: 600;
+}
+
+.mapa__aviso button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--azul);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+}
+
+/* Marca de farola: punto amarillo con borde y código a la derecha (visible desde zoom 18). */
+.farola-marca {
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--amarillo);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 50%);
+  box-sizing: border-box;
+}
+
+.farola-marca__codigo {
+  display: none;
+  position: absolute;
+  left: 18px;
+  top: -3px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 90%);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mapa--etiquetas .farola-marca__codigo {
+  display: block;
+}
+
+.ficha h2 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.ficha p {
+  margin: 0;
+}

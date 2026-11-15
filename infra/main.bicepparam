@@ -8,4 +8,4 @@ param presupuestoInicio = '2026-11-01'
 param avisosEmail = readEnvironmentVariable('AVISOS_EMAIL')
 param corteRoleId = readEnvironmentVariable('CORTE_ROLE_ID')
 // Público (no es secreto). Lo crea Rafa en Google Cloud (infra/README.md); vacío = login no disponible.
-param googleClientId = ''
+param googleClientId = '115994210583-2n2hg02kal7k1l1n4qop3m262sh83fpr.apps.googleusercontent.com'

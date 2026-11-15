@@ -1,4 +1,4 @@
-<main>
+<header class="cabecera">
   <h1>{{ title() }}</h1>
   <nav class="sesion">
     @if (sesion.dentro()) {
@@ -7,5 +7,5 @@
       <a routerLink="/login">Entrar</a>
     }
   </nav>
-  <router-outlet />
-</main>
+</header>
+<router-outlet />

@@ -8,7 +8,7 @@ import { Sesion } from './sesion';
 describe('App', () => {
   beforeEach(() => TestBed.configureTestingModule({ imports: [App], providers: [provideRouter(routes)] }));
 
-  it('muestra el título, el inicio y el enlace para entrar', async () => {
+  it('muestra el título, el enlace para entrar y el mapa de farolas en el inicio', async () => {
     const fixture = TestBed.createComponent(App);
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');
@@ -17,7 +17,7 @@ describe('App', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain('Buenavista I · Incidencias');
     expect(el.querySelector('a[href="/login"]')?.textContent).toContain('Entrar');
-    expect(harness.routeNativeElement?.textContent).toContain('En construcción');
+    expect(harness.routeNativeElement?.querySelector('app-mapa-farolas [aria-label="Mapa de farolas"]')).not.toBeNull();
   });
 
   it('con sesión muestra el rol y permite salir', async () => {
