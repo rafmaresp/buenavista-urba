@@ -141,7 +141,9 @@ resource corte 'Microsoft.Logic/workflows@2019-05-01' = {
         }
       }
       actions: {
-        // Solo actúa con una alerta de presupuesto con el esquema común; cualquier otra petición no corta.
+        // Solo actúa con una alerta de presupuesto de gasto real con el esquema común (campos de la muestra
+        // oficial «Cost budget alert»: learn.microsoft.com/azure/azure-monitor/alerts/alerts-payload-samples).
+        // Cualquier otra petición no corta.
         EsAlertaDePresupuesto: {
           type: 'If'
           expression: {
@@ -156,6 +158,18 @@ resource corte 'Microsoft.Logic/workflows@2019-05-01' = {
                 equals: [
                   '@coalesce(triggerBody()?[\'data\']?[\'essentials\']?[\'monitoringService\'], \'\')'
                   'CostAlerts'
+                ]
+              }
+              {
+                equals: [
+                  '@coalesce(triggerBody()?[\'data\']?[\'alertContext\']?[\'AlertCategory\'], \'\')'
+                  'budgets'
+                ]
+              }
+              {
+                equals: [
+                  '@coalesce(triggerBody()?[\'data\']?[\'alertContext\']?[\'AlertData\']?[\'ThresholdType\'], \'\')'
+                  'Actual'
                 ]
               }
             ]

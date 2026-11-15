@@ -74,6 +74,14 @@ Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage e
 
 Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
 
+### Probar el corte (una vez, tras el primer despliegue)
+
+La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSchema`, `monitoringService = CostAlerts`, `AlertCategory = budgets` y `ThresholdType = Actual`, como la muestra oficial *Cost budget alert*.
+
+1. Portal → Monitor → Alertas → Grupos de acciones → `ag-buenavista-corte` → **Probar**, tipo *Budget alert*. La muestra que envía Azure es de gasto **previsto**, así que **no** debe cortar: en el historial de ejecuciones de la Logic App la condición sale `false`.
+2. Desde el historial de esa ejecución, **Reenviar** no sirve para probar el corte. Para probarlo de verdad, en el diseñador de la Logic App ejecuta el desencadenador con el JSON de *Cost budget alert* de la página de muestras: la cuenta pasa a `publicNetworkAccess: Disabled` y los datos siguen ahí.
+3. Reactiva con el procedimiento de arriba.
+
 ## SAS de datos (`TABLES_CONNECTION`)
 
 - Lo genera el despliegue con la clave de la cuenta (`sasKey`, por defecto `key1`): solo Table, solo entidades (no crea ni borra tablas), leer, añadir, actualizar, borrar y consultar, solo HTTPS.
