@@ -64,37 +64,31 @@ En GitHub (Settings del repo):
 2. Tras fusionar: Actions → **Infraestructura (Bicep)** → *Run workflow* en `main` → aprobar el entorno `infra`.
 3. Después, el despliegue de la app (`azure-swa.yml`) obtiene el token de la SWA por OIDC en cada push a `main`. Tras el primer despliegue de infraestructura, borra el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN` si existía.
 
-Una tabla nueva se declara en `main.bicep` (`tableServices/tables`) y se despliega la infraestructura **antes** que la app que la usa: la app no puede crear tablas.
+Una tabla nueva se declara en `main.bicep` (`tableServices/tables`), se añade a `TABLAS` en `api/src/tablas.ts` (un test comprueba que coinciden) y se despliega la infraestructura **antes** que la app que la usa: la app no puede crear tablas.
 
-## Reactivar tras un corte
+### Orden con el catálogo de farolas (cambio 2)
 
-Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage en `publicNetworkAccess: Disabled`. La API deja de acceder a los datos, pero no se borra nada.
+1. **Infraestructura (Bicep)** desde `main`: crea `Farolas` y `Auditoria` y cambia los app settings de la SWA.
+2. **Cargar farolas** (Actions → *Run workflow* en `main` → aprobar `infra`): siembra las 70 farolas, cada alta auditada con `sistema:carga`. Solo da de alta las que faltan y nunca modifica una existente, así que relanzarla no cambia nada (el resumen dice "Altas: 0").
+3. **Despliegue Azure Static Web Apps**: si corrió antes del paso 1, relánzalo. `https://<swa>/api/farolas` debe devolver 70 farolas sin `precision`.
 
-1. Revisa la causa en el portal: Cost Management → Análisis de costes del grupo `rg-buenavista-incidencias`.
-2. Corrige la causa (por ejemplo, rota el SAS si se ha filtrado; ver abajo).
-3. Ejecuta el despliegue de `infra.yml`, que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+## SAS de datos (uno por tabla)
 
-Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
+- El despliegue genera un **SAS de servicio por tabla** con la clave de la cuenta (`sasKey`, por defecto `key1`), solo HTTPS, y lo guarda en su app setting:
 
-**Ojo:** el presupuesto avisa una sola vez por umbral y mes. Si reactivas Storage en el mismo mes del corte, no habrá otro corte automático hasta el mes siguiente: vigila el gasto a mano o sube el importe con `presupuestoImporte` si el gasto es legítimo.
+  | App setting | Tabla | Permisos | Por qué |
+  |---|---|---|---|
+  | `FAROLAS_CONNECTION` | `Farolas` | `r` (consultar) | La app solo lee el catálogo; el cambio 8 añadirá añadir y actualizar |
+  | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
 
-### Probar el corte (una vez, tras el primer despliegue)
-
-La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSchema`, `monitoringService = CostAlerts`, `AlertCategory = budgets` y `ThresholdType = Actual`, como la muestra oficial *Cost budget alert*.
-
-1. Portal → Monitor → Alertas → Grupos de acciones → `ag-buenavista-corte` → **Probar**, tipo *Budget alert*. La muestra que envía Azure es de gasto **previsto**, así que **no** debe cortar: en el historial de ejecuciones de la Logic App la condición sale `false`.
-2. Desde el historial de esa ejecución, **Reenviar** no sirve para probar el corte. Para probarlo de verdad, en el diseñador de la Logic App ejecuta el desencadenador con el JSON de *Cost budget alert* de la página de muestras: la cuenta pasa a `publicNetworkAccess: Disabled` y los datos siguen ahí.
-3. Reactiva con el procedimiento de arriba.
-
-## SAS de datos (`TABLES_CONNECTION`)
-
-- Lo genera el despliegue con la clave de la cuenta (`sasKey`, por defecto `key1`): solo Table, solo entidades (no crea ni borra tablas), leer, añadir, actualizar, borrar y consultar, solo HTTPS.
-- **Caduca un año después de cada despliegue.** Si nadie despliega en un año, la API pierde el acceso: despliega antes.
+- Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
+- **Caducan un año después de cada despliegue.** Si nadie despliega en un año, la API pierde el acceso: despliega antes.
+- El workflow "Cargar farolas" no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: ra`, `Auditoria: a`), y los enmascara en el log.
 - `main.bicep` sustituye **todos** los app settings de la SWA: cualquier otro setting de la app se declara ahí.
 
 ### Rotar claves (si el SAS se filtra)
 
-Un SAS de cuenta solo se revoca regenerando la clave que lo firma:
+Un SAS de servicio sin política de acceso almacenada solo se revoca regenerando la clave que lo firma:
 
 1. Regenera la clave que **no** firma (`key2`): `az storage account keys renew -g rg-buenavista-incidencias -n <cuenta> --key key2`.
 2. Cambia `sasKey` a `'key2'` en `main.bicepparam`, fusiona y despliega: la app pasa a un SAS firmado con `key2`.

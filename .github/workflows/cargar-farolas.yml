@@ -1,0 +1,73 @@
+name: Cargar farolas
+
+# Siembra el catálogo (tabla Farolas) desde data/farolas_buenavista.csv, como el HasData de una
+# migración: solo da de alta las farolas que faltan, cada una auditada con actor sistema:carga, y
+# nunca toca una existente. Se puede relanzar sin efectos.
+# A mano, solo desde main y tras aprobar el entorno `infra`. Va después de "Infraestructura (Bicep)",
+# que crea las tablas. Credenciales: dos SAS de servicio de 1 h (Farolas ra, Auditoria a), enmascarados.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: cargar-farolas
+  cancel-in-progress: false
+
+jobs:
+  cargar:
+    name: Cargar farolas
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RG: rg-buenavista-incidencias
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - name: Compilar la API
+        working-directory: api
+        run: |
+          npm ci
+          npm run build
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_INFRA }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: SAS de 1 h por tabla (enmascarados)
+        run: |
+          cuenta=$(az storage account list -g "$RG" --query "[?starts_with(name, 'stbuenavista')].name | [0]" -o tsv --only-show-errors)
+          test -n "$cuenta" || { echo "::error::No hay cuenta stbuenavista* en $RG (¿falta desplegar infra.yml?)"; exit 1; }
+          endpoint=$(az storage account show -g "$RG" -n "$cuenta" --query primaryEndpoints.table -o tsv --only-show-errors)
+          clave=$(az storage account keys list -g "$RG" -n "$cuenta" --query "[0].value" -o tsv --only-show-errors)
+          echo "::add-mask::$clave"
+          caduca=$(date -u -d '+1 hour' '+%Y-%m-%dT%H:%MZ')
+          sas() {
+            az storage table generate-sas --name "$1" --permissions "$2" --expiry "$caduca" --https-only \
+              --account-name "$cuenta" --account-key "$clave" -o tsv --only-show-errors
+          }
+          sas_farolas=$(sas Farolas ra)
+          sas_auditoria=$(sas Auditoria a)
+          echo "::add-mask::$sas_farolas"
+          echo "::add-mask::$sas_auditoria"
+          {
+            echo "FAROLAS_CONNECTION=TableEndpoint=${endpoint};SharedAccessSignature=${sas_farolas}"
+            echo "AUDITORIA_CONNECTION=TableEndpoint=${endpoint};SharedAccessSignature=${sas_auditoria}"
+          } >> "$GITHUB_ENV"
+      - name: Cargar
+        working-directory: api
+        run: |
+          set -o pipefail
+          node dist/scripts/cargar-farolas.js ../data/farolas_buenavista.csv | tee salida.txt
+          {
+            echo '## Carga de farolas'
+            sed 's/^/    /' salida.txt
+          } >> "$GITHUB_STEP_SUMMARY"

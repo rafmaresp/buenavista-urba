@@ -1,6 +1,6 @@
 // Infraestructura de Buenavista I (spec 002-infra-bicep).
 // Se despliega en el grupo de recursos que crea Rafa (rg-buenavista-incidencias) con infra.yml.
-// Sin secretos en el repo: el SAS de datos se genera aquí y el correo de avisos llega como parámetro seguro.
+// Sin secretos en el repo: los SAS de datos (uno por tabla) se generan aquí y el correo de avisos llega como parámetro seguro.
 
 targetScope = 'resourceGroup'
 
@@ -62,22 +62,45 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-// Sin tablas: cada cambio declara aquí las suyas (tableServices/tables).
+// Cada cambio declara aquí sus tablas (tableServices/tables); api/src/tablas.ts debe coincidir (lo comprueba un test).
 resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
   parent: storage
   name: 'default'
 }
 
-// SAS de cuenta: solo Table (ss=t), solo entidades (srt=o: no crea ni borra tablas),
-// leer/añadir/actualizar/borrar entidades y consultar, solo HTTPS, caducidad de un año.
-var tablesSas = storage.listAccountSas('2023-05-01', {
-  signedServices: 't'
-  signedResourceTypes: 'o'
-  signedPermission: 'raudl'
+resource tablaFarolas 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'Farolas'
+}
+
+resource tablaAuditoria 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'Auditoria'
+}
+
+// Un SAS de servicio por tabla (decisión 2026-11-15, opción A): solo actúa sobre su tabla, no crea
+// ni borra tablas, solo HTTPS y caduca al año. La app solo lee Farolas (r) y solo añade y lee
+// Auditoria (ra): ni un fallo ni una credencial filtrada pueden modificar o borrar la auditoría.
+// Un SAS de tabla necesita tn=<tabla> en la query; se añade si listServiceSas no lo devuelve.
+var tableEndpoint = storage.properties.primaryEndpoints.table
+
+var farolasSasToken = storage.listServiceSas('2023-05-01', {
+  canonicalizedResource: '/table/${storage.name}/${toLower(tablaFarolas.name)}'
+  signedPermission: 'r'
   signedProtocol: 'https'
   signedExpiry: sasExpiry
   keyToSign: sasKey
-}).accountSasToken
+}).serviceSasToken
+var farolasSas = contains(farolasSasToken, 'tn=') ? farolasSasToken : '${farolasSasToken}&tn=${tablaFarolas.name}'
+
+var auditoriaSasToken = storage.listServiceSas('2023-05-01', {
+  canonicalizedResource: '/table/${storage.name}/${toLower(tablaAuditoria.name)}'
+  signedPermission: 'ra'
+  signedProtocol: 'https'
+  signedExpiry: sasExpiry
+  keyToSign: sasKey
+}).serviceSasToken
+var auditoriaSas = contains(auditoriaSasToken, 'tn=') ? auditoriaSasToken : '${auditoriaSasToken}&tn=${tablaAuditoria.name}'
 
 // ---------- Static Web App Free ----------
 
@@ -99,7 +122,8 @@ resource swaSettings 'Microsoft.Web/staticSites/config@2023-12-01' = {
   parent: swa
   name: 'appsettings'
   properties: {
-    TABLES_CONNECTION: 'TableEndpoint=${storage.properties.primaryEndpoints.table};SharedAccessSignature=${tablesSas}'
+    FAROLAS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${farolasSas}'
+    AUDITORIA_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${auditoriaSas}'
   }
 }
 

@@ -258,3 +258,17 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** Rafa necesita probar la CI/CD ahora y la petición de acceso puede tardar días.
 - **Sin datos reales ni vecinos** mientras la SWA esté en `eastus2`: las Functions gestionadas tratarían datos personales fuera de la UE, en contra de la constitución y de `docs/rgpd/`.
 - Al tener acceso a `westeurope`: borrar la SWA, volver `swaLocation` a `westeurope` y desplegar. La región de una SWA no se puede cambiar, así que se recrea y la URL cambia.
+
+### 2026-11-15: Catálogo de farolas: SAS por tabla, carga como siembra y F62 como una farola más
+
+**By:** Rafa
+**What:** En el cambio 2 (`catalogo-farolas`, `specs/003-catalogo-farolas/`):
+- **Opción A**: la app usa un SAS de servicio por tabla, en un app setting cada uno (`FAROLAS_CONNECTION`, `AUDITORIA_CONNECTION`). El de `Auditoria` solo permite añadir y leer; el de `Farolas`, solo leer hasta el cambio 8. Se elimina el SAS de cuenta `TABLES_CONNECTION`.
+- **Carga** como la siembra de una migración: workflow manual "Cargar farolas" (entorno `infra`) que solo da de alta las farolas que faltan, cada una auditada con `sistema:carga`, y nunca modifica una existente.
+- **F62** es una farola normal en los datos (`estimada`); que sus coordenadas son inferidas queda solo como nota en `docs/producto.md`. Sustituye a "F62 inferida".
+- **Farola con `PUT` (reubicar) y `POST` (crear)**, solo para la directiva, en el cambio 8, tras el login. Sustituye a "la directiva no da de alta farolas".
+**Why:**
+- Con el SAS de cuenta, una credencial filtrada o un fallo de la app podían borrar la auditoría; con `ra` es append-only también frente a la propia app. Además, el SAS de servicio evita la diferencia entre Azure y Azurite con `srt`, así que la consulta de entidades se prueba en la CI.
+- Nadie ejecuta scripts en local; el workflow reutiliza la identidad y la aprobación de `infra` con credenciales de 1 h.
+- "Una farola es una farola" (Rafa): sin casos especiales en el modelo.
+- Escribir farolas exige comprobar el rol de directiva, que llega con el login (cambio 4).
