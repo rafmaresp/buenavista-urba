@@ -1,4 +1,4 @@
-// Carga (siembra) del catálogo de farolas. La lanza el workflow "Cargar farolas" con
+// Carga (siembra) del catálogo de farolas. La lanza el workflow "Desplegar infraestructura (Bicep)" con
 // FAROLAS_CONNECTION (rad: deshacer un alta si su auditoría falla) y AUDITORIA_CONNECTION (a),
 // SAS de servicio de 1 h. Uso:
 //   node dist/scripts/cargar-farolas.js ../data/farolas_buenavista.csv

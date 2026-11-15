@@ -1,6 +1,6 @@
 # Infraestructura (Azure)
 
-Todo lo de Azure se declara en `main.bicep` y se valida en los PR con [`infra.yml`](../.github/workflows/infra.yml) y se despliega solo en cada push a `main` con [`azure-swa.yml`](../.github/workflows/azure-swa.yml), que llama a [`infra-desplegar.yml`](../.github/workflows/infra-desplegar.yml). Diseño y decisiones: [`specs/002-infra-bicep/`](../specs/002-infra-bicep/).
+Todo lo de Azure se declara en `main.bicep` y se valida en los PR con [`infra.yml`](../.github/workflows/infra.yml) y se despliega con [`infra-desplegar.yml`](../.github/workflows/infra-desplegar.yml), que lanza [`azure-swa.yml`](../.github/workflows/azure-swa.yml) cuando un push a `main` toca `infra/**` o `data/**` (con la aprobación de Rafa). Diseño y decisiones: [`specs/002-infra-bicep/`](../specs/002-infra-bicep/).
 
 | Recurso | Nombre | Región | Coste esperado |
 |---|---|---|---|
@@ -54,22 +54,21 @@ az role assignment create --assignee-object-id $INFRA --assignee-principal-type 
 
 En GitHub (Settings del repo):
 
-- Entorno `infra` **sin revisores obligatorios** (despliegue continuo, decisión del 2026-11-15) y con el secreto de entorno `AVISOS_EMAIL`.
+- Entorno `infra` con revisor obligatorio `rafmaresp` (sin *Prevent self-reviews*) y el secreto de entorno `AVISOS_EMAIL`.
 - Entorno `produccion` limitado a la rama `main`.
 - Variables del repositorio: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID_INFRA` y `AZURE_CLIENT_ID_APP` (los `clientId` de las identidades; no son secretos).
 
 ## Desplegar
 
-Despliegue continuo, sin aprobaciones manuales (decisión de Rafa del 2026-11-15): lo que entra en `main` se despliega solo.
+Regla (decisión de Rafa del 2026-11-15): **solo un cambio de infraestructura de Azure pide su aprobación**; lo demás se despliega solo al fusionar en `main`.
 
-1. Un PR que toca `infra/**` valida el Bicep y publica el `what-if` en el resumen del job (solo recursos y tipo de cambio: las propiedades llevarían el SAS y el correo).
-2. Al fusionar, **Despliegue Azure Static Web Apps** (`azure-swa.yml`) hace en cada push a `main`, en este orden:
-   1. **Infraestructura**: llama a `infra-desplegar.yml` (Bicep; crea tablas, renueva los SAS de la app y reactiva Storage si estaba cortado).
-   2. **Farolas**: llama a `cargar-farolas.yml`, que da de alta solo las farolas que faltan (cada alta auditada con `sistema:carga`) y nunca modifica una existente; normalmente dice "Altas: 0".
-   3. **App**: obtiene el token de la SWA por OIDC y despliega `web/` y `api/`.
-3. Si un paso falla, los siguientes no se ejecutan. Los tres se pueden relanzar también a mano (*Run workflow* en `main`).
+1. Un PR que toca `infra/**` valida el Bicep y, cuando Rafa aprueba el entorno `infra`, publica el `what-if` en el resumen del job (solo recursos y tipo de cambio: las propiedades llevarían el SAS y el correo).
+2. Al fusionar, **Despliegue Azure Static Web Apps** (`azure-swa.yml`) mira qué ha cambiado en el push:
+   - Si toca `infra/**`, `data/**` o `infra-desplegar.yml`: llama a **Desplegar infraestructura (Bicep)**, que espera la aprobación de Rafa en el entorno `infra` y en un solo job despliega el Bicep y siembra las farolas que falten (solo altas, cada una auditada con `sistema:carga`; si no falta ninguna dice "Altas: 0"). Si se rechaza o falla, la app no se despliega.
+   - Siempre, al final: despliega la app (`web/` y `api/`) sin aprobación.
+3. A mano (*Run workflow* en `main`), **Desplegar infraestructura (Bicep)** sirve para reactivar Storage tras un corte o renovar los SAS.
 
-Una tabla nueva se declara en `main.bicep` (`tableServices/tables`) y se añade a `TABLAS` en `api/src/tablas.ts` (un test comprueba que coinciden). El orden del despliegue garantiza que exista antes que la app que la usa: la app no puede crear tablas.
+Una tabla nueva se declara en `main.bicep` (`tableServices/tables`) y se añade a `TABLAS` en `api/src/tablas.ts` (un test comprueba que coinciden). Como el PR toca `infra/**`, la infraestructura se despliega antes que la app que la usa: la app no puede crear tablas.
 
 Tras desplegar, `https://<swa>/api/farolas` debe devolver 70 farolas sin `precision`.
 
@@ -79,7 +78,7 @@ Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage e
 
 1. Revisa la causa en el portal: Cost Management → Análisis de costes del grupo `rg-buenavista-incidencias`.
 2. Corrige la causa (por ejemplo, rota el SAS si se ha filtrado; ver abajo).
-3. Fusiona cualquier cambio en `main` o ejecuta a mano **Desplegar infraestructura (Bicep)** (`infra-desplegar.yml`); el despliegue vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+3. Ejecuta **Desplegar infraestructura (Bicep)** (`infra-desplegar.yml`), que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
 
 Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
 
@@ -103,8 +102,8 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
   | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
-- **Caducan un año después de cada despliegue**, y cada push a `main` despliega. Si nadie fusiona nada en un año, la API pierde el acceso: lanza el despliegue a mano antes.
-- El workflow "Cargar farolas" no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: rad`, con borrado solo para deshacer un alta cuya auditoría falle; `Auditoria: a`), y los enmascara en el log.
+- **Caducan un año después de cada despliegue de infraestructura.** Si en un año no cambia la infra, la API pierde el acceso: lanza **Desplegar infraestructura (Bicep)** a mano antes.
+- La carga de farolas (dentro de **Desplegar infraestructura (Bicep)**) no usa estos SAS: firma los suyos al vuelo, de 1 h (`Farolas: rad`, con borrado solo para deshacer un alta cuya auditoría falle; `Auditoria: a`), y los enmascara en el log.
 - `main.bicep` sustituye **todos** los app settings de la SWA: cualquier otro setting de la app se declara ahí.
 
 ### Rotar claves (si el SAS se filtra)

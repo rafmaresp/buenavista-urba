@@ -1,7 +1,8 @@
 name: Despliegue Azure Static Web Apps
 
-# Despliegue continuo: en cada push a main (y a mano), en este orden y sin aprobaciones manuales
-# (decisión de Rafa del 2026-11-15): infraestructura (Bicep) → carga de farolas (solo altas) → app.
+# En cada push a main (y a mano). Si el push toca infra/** o data/**, primero despliega la
+# infraestructura y siembra las farolas que falten (infra-desplegar.yml, entorno `infra`: espera la
+# aprobación de Rafa); si no, despliega la app directamente, sin aprobaciones (decisión del 2026-11-15).
 # No hay previews por PR: no se dispara en pull_request.
 # El token de la app se obtiene por OIDC con id-buenavista-app (entorno `produccion`, solo main).
 # Sin la variable AZURE_CLIENT_ID_APP, o si la SWA no existe, el job de la app termina en verde con un aviso.
@@ -17,26 +18,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  infra:
-    name: Infraestructura
-    if: vars.AZURE_CLIENT_ID_INFRA != ''
-    uses: ./.github/workflows/infra-desplegar.yml
+  cambios:
+    name: ¿Cambia la infra?
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+    outputs:
+      infra: ${{ steps.mirar.outputs.infra }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: mirar
+        env:
+          ANTES: ${{ github.event.before }}
+        run: |
+          # A mano, o sin commit anterior conocido, se despliega todo.
+          if [ "$GITHUB_EVENT_NAME" != push ] || ! git cat-file -e "${ANTES}^{commit}" 2>/dev/null; then
+            echo infra=true >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$ANTES" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
+            echo infra=true >> "$GITHUB_OUTPUT"
+          else
+            echo infra=false >> "$GITHUB_OUTPUT"
+          fi
 
-  farolas:
-    name: Farolas
-    needs: infra
-    uses: ./.github/workflows/cargar-farolas.yml
+  infra:
+    name: Infraestructura y farolas
+    needs: cambios
+    if: needs.cambios.outputs.infra == 'true' && vars.AZURE_CLIENT_ID_INFRA != ''
+    uses: ./.github/workflows/infra-desplegar.yml
     permissions:
       contents: read
       id-token: write
 
   deploy:
     name: App
-    needs: farolas
-    # Sin identidad de infra (variable vacía) se saltan los dos anteriores y la app se despliega igual.
+    needs: infra
+    # Si la infra no cambia, el job anterior se salta y la app se despliega igual; si falla o se rechaza, no.
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     environment: produccion
