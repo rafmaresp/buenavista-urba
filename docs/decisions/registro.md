@@ -296,3 +296,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "No quiero estar autorizando subidas, te pido algo y tú lo haces" y "lo único que necesito es que si se va a cambiar infra de Azure, yo lo acepte" (Rafa). Claude no puede lanzar workflows (la integración no tiene permiso de dispatch), así que el disparador es la fusión.
 - La carga va en el mismo job que el Bicep porque usa la identidad de infra: así es una sola aprobación. Un cambio solo en `data/` también la pide, porque escribe en Azure con esa identidad.
 - Tras un corte por presupuesto, el despliegue automático no reactiva Storage: falla y avisa; solo se reactiva lanzando a mano "Desplegar infraestructura (Bicep)" (se mantiene "se reactiva a mano" del 2026-11-12).
+
+### 2026-11-15: Verificación del entorno real tras desplegar
+
+**By:** Rafa
+**What:** Tras cada despliegue de la app, `azure-swa.yml` hace un GET anónimo a `/api/health` del entorno real (hasta 10 intentos); si no responde, el job queda en rojo.
+**Why:** "Los e2e no se hacen sobre el entorno real? no se verifica nunca que siga funcionando?" y "verificar lo más tontorrón de momento, el health por ejemplo" (Rafa). Los e2e de la CI usan la CLI de SWA y un emulador, así que no detectan un fallo de despliegue en Azure.
+- Limitación: `/api/health` no toca Storage, así que no detecta un SAS roto. Cuando haga falta, se amplía (por ejemplo, `/api/farolas` con 70 farolas) o se añaden e2e de solo lectura contra producción.
+- Los cambios solo de documentación (`*.md`) bajo `infra/` no cuentan como cambio de infraestructura: ni el what-if del PR ni el despliegue piden aprobación.
