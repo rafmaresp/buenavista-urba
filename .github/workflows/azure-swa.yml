@@ -1,9 +1,11 @@
 name: Despliegue Azure Static Web Apps
 
-# Solo en push a main (y a mano). No hay previews por PR: no se dispara en pull_request.
-# El token de despliegue se obtiene por OIDC con id-buenavista-app (entorno `produccion`, solo main).
-# Sin la variable AZURE_CLIENT_ID_APP, o si la SWA no existe, termina en verde con un aviso.
-# Hasta el primer despliegue de infra.yml, id-buenavista-app no tiene ningún rol y el login falla: es esperado.
+# En cada push a main (y a mano). Si el push toca infra/** o data/**, primero despliega la
+# infraestructura y siembra las farolas que falten (infra-desplegar.yml, entorno `infra`: espera la
+# aprobación de Rafa); si no, despliega la app directamente, sin aprobaciones (decisión del 2026-11-15).
+# No hay previews por PR: no se dispara en pull_request.
+# El token de la app se obtiene por OIDC con id-buenavista-app (entorno `produccion`, solo main).
+# Sin la variable AZURE_CLIENT_ID_APP, o si la SWA no existe, el job de la app termina en verde con un aviso.
 on:
   push:
     branches: [main]
@@ -16,7 +18,56 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  cambios:
+    name: ¿Cambia la infra?
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      infra: ${{ steps.mirar.outputs.infra }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: mirar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Compara con el último commit en el que la infra SÍ se desplegó bien (no con el push anterior),
+          # para que un despliegue de infra rechazado, fallido o cancelado no se pierda.
+          # A mano, o sin referencia válida, se despliega todo.
+          desplegar() { echo "infra=$1" >> "$GITHUB_OUTPUT"; echo "Infra: $1 ($2)"; exit 0; }
+          [ "$GITHUB_EVENT_NAME" = push ] || desplegar true "lanzado a mano"
+          # GitHub registra un despliegue del entorno `infra` por cada job que lo usa (llamado desde aquí o
+          # lanzado a mano); el más reciente desde main con estado success da el commit. Los what-if de
+          # infra.yml también usan `infra`, pero desde refs de PR: se descartan por ref.
+          ref=""
+          for dep in $(gh api --paginate "repos/$GITHUB_REPOSITORY/deployments?environment=infra&per_page=100" \
+                         --jq '.[] | select(.ref == "main" or .ref == "refs/heads/main") | "\(.id):\(.sha)"'); do
+            estado=$(gh api "repos/$GITHUB_REPOSITORY/deployments/${dep%%:*}/statuses?per_page=1" --jq '.[0].state // ""')
+            if [ "$estado" = success ]; then ref=${dep#*:}; break; fi
+          done
+          [ -n "$ref" ] && git merge-base --is-ancestor "$ref" "$GITHUB_SHA" 2>/dev/null || desplegar true "sin despliegue de infra previo válido"
+          if git diff --name-only "$ref" "$GITHUB_SHA" | grep -qE '^(infra/|data/|\.github/workflows/infra-desplegar\.yml$)'; then
+            desplegar true "cambios de infra desde ${ref:0:7}"
+          fi
+          desplegar false "sin cambios de infra desde ${ref:0:7}"
+
+  infra:
+    name: Infraestructura y farolas
+    needs: cambios
+    if: needs.cambios.outputs.infra == 'true' && vars.AZURE_CLIENT_ID_INFRA != ''
+    uses: ./.github/workflows/infra-desplegar.yml
+    permissions:
+      contents: read
+      id-token: write
+
   deploy:
+    name: App
+    needs: infra
+    # Si la infra no cambia, el job anterior se salta y la app se despliega igual; si falla o se rechaza, no.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     environment: produccion
     permissions:
@@ -42,7 +93,7 @@ jobs:
           # Solo se omite si la SWA no existe; cualquier otro fallo (permisos, ARM) deja el job en rojo.
           if ! az staticwebapp show -n "$SWA" -g "$RG" --only-show-errors -o none 2> err.txt; then
             if grep -qE 'ResourceNotFound|ResourceGroupNotFound' err.txt; then
-              echo "::notice::La SWA $SWA no existe todavía (¿falta desplegar infra.yml?); despliegue omitido."
+              echo "::notice::La SWA $SWA no existe todavía (¿falta desplegar la infraestructura?); despliegue omitido."
               exit 0
             fi
             cat err.txt

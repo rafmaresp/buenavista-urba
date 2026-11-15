@@ -8,7 +8,7 @@ import { clienteAdmin, clienteConSas, conTablasTemporales, contar, hayAzuriteCon
 
 const semilla = parsearSemilla(readFileSync(join(__dirname, '..', '..', 'data', 'farolas_buenavista.csv'), 'utf8'));
 
-// Con los mismos permisos que el workflow "Cargar farolas": Farolas rad, Auditoria a.
+// Con los mismos permisos que la carga de infra-desplegar.yml: Farolas rad, Auditoria a.
 function clientesDeCarga(farolas: string, auditoria: string): RepositorioFarolas {
   return new RepositorioFarolas(
     clienteConSas(farolas, { query: true, add: true, delete: true }),

@@ -1,8 +1,8 @@
 name: Infraestructura (Bicep)
 
-# Solo en PR que toca infra/**: valida el Bicep (sin Azure) y, tras la aprobación de Rafa en el
-# entorno `infra`, ejecuta what-if por OIDC. No despliega nada: el despliegue manual está en
-# infra-desplegar.yml, para que los PR no muestren un job "Desplegar" en skipped.
+# Solo en PR que toca infra/**: valida el Bicep (sin Azure) y ejecuta what-if por OIDC (entorno
+# `infra`). No despliega nada: el despliegue va en azure-swa.yml (push a main), que llama a
+# infra-desplegar.yml.
 on:
   pull_request:
     paths:

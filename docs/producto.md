@@ -83,7 +83,7 @@ Zonas de **maleza**, **incidencia libre** sobre las calles, **capa de redes** (s
 
 ## Datos de referencia
 
-- **Farolas**: la posición vigente vive en la tabla `Farolas`; `data/farolas_buenavista.csv` es la **semilla**. La carga (workflow "Cargar farolas") es como la siembra de una migración: solo da de alta las que faltan, nunca toca una existente y se puede relanzar sin efectos. Inventario: 70 farolas `F01`–`F70` sin huecos.
+- **Farolas**: la posición vigente vive en la tabla `Farolas`; `data/farolas_buenavista.csv` es la **semilla**. La carga (dentro del despliegue de infraestructura) es como la siembra de una migración: solo da de alta las que faltan, nunca toca una existente y se puede relanzar sin efectos. Inventario: 70 farolas `F01`–`F70` sin huecos.
 - **F62**: una farola más en los datos (`estimada`, calle "C. H / C. Q"). Nota: ninguna fuente tenía sus coordenadas y se tomó el punto medio F61–F63 (37.3154785, −5.9617603), con un error real de hasta ±20 m.
 - **Altas y bajas**: altas con `POST /api/farolas` (directiva, cambio 8) o en la semilla; bajas, a petición de Rafa por los devs, auditadas. **Calles**: no editables.
 

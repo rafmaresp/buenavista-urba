@@ -288,3 +288,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Table Storage no tiene transacciones entre tablas: el hueco se cierra deshaciendo. Si también falla deshacer, el repositorio lanza un error propio (`AltaSinAuditar`) para revisarlo a mano.
 - Descartado, servicio asíncrono con cola: las Functions de SWA Free solo atienden HTTP y Table Storage no tiene change feed; exigiría una Function App aparte de pago.
 - Deshacer un alta exige borrar: el SAS de `Farolas` del workflow de carga pasa a `rad`. El de la app sigue en `r` hasta el cambio 8.
+
+### 2026-11-15: Solo los cambios de infraestructura piden aprobación
+
+**By:** Rafa
+**What:** Al fusionar en `main` todo se despliega solo, salvo los cambios de infraestructura de Azure, que Rafa acepta. `azure-swa.yml` mira qué cambió desde el último despliegue de infra correcto (no solo en el push, para que uno rechazado o fallido no se pierda): si cambió `infra/**`, `data/**` o `infra-desplegar.yml`, llama a `infra-desplegar.yml` (entorno `infra`, una aprobación) que despliega el Bicep y siembra las farolas que falten en un solo job; después, o directamente si no hay cambios de infra, despliega la app sin aprobación. Desaparece el workflow manual "Cargar farolas". Sustituye al despliegue manual de infraestructura y de la carga en tres pasos.
+**Why:** "No quiero estar autorizando subidas, te pido algo y tú lo haces" y "lo único que necesito es que si se va a cambiar infra de Azure, yo lo acepte" (Rafa). Claude no puede lanzar workflows (la integración no tiene permiso de dispatch), así que el disparador es la fusión.
+- La carga va en el mismo job que el Bicep porque usa la identidad de infra: así es una sola aprobación. Un cambio solo en `data/` también la pide, porque escribe en Azure con esa identidad.
+- Tras un corte por presupuesto, el despliegue automático no reactiva Storage: falla y avisa; solo se reactiva lanzando a mano "Desplegar infraestructura (Bicep)" (se mantiene "se reactiva a mano" del 2026-11-12).
