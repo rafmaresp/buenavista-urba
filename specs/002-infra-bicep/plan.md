@@ -16,7 +16,7 @@
 ## Decisiones
 
 ### D1. Grupo de recursos existente, creado por Rafa
-El Bicep se despliega a ámbito de grupo de recursos (`rg-buenavista-incidencias`, `westeurope`), que Rafa crea una vez.
+El Bicep se despliega a ámbito de grupo de recursos (`rg-buenavista-incidencias`, `westeurope`), que Rafa crea una vez. Los recursos van en `spaincentral` (parámetro `location`; `westeurope` no admite recursos nuevos en la suscripción, decisión del 2026-11-15) salvo la SWA, en `westeurope` (parámetro `swaLocation`).
 - A favor: la identidad de despliegue solo tiene permisos de escritura en ese grupo (mínimo privilegio); el presupuesto con ámbito de grupo cubre todo lo que crea este repo y nada más.
 - En contra: un paso manual.
 - Descartado: despliegue a nivel de suscripción que crea el grupo; obliga a dar `Contributor` sobre toda la suscripción.
@@ -35,7 +35,7 @@ El Bicep se despliega a ámbito de grupo de recursos (`rg-buenavista-incidencias
 **D2b. Endurecimiento sin coste**: `minimumTlsVersion: TLS1_2`, `supportsHttpsTrafficOnly: true`, `allowBlobPublicAccess: false`, `allowCrossTenantReplication: false`, `allowSharedKeyAccess: true` (necesario para firmar el SAS), `networkAcls.defaultAction: Allow`. A diferencia de Cosmos, el firewall de Storage no tiene la regla "solo centros de datos de Azure", y las Functions gestionadas no son un "servicio de confianza" ni tienen IP fijas, así que no se puede restringir por red sin romper la API.
 
 ### D3. Cuenta de Storage
-`StorageV2`, `Standard_LRS` (la redundancia más barata; los datos se pueden recargar desde el CSV y la auditoría es la única pérdida real, aceptable para este proyecto), `accessTier: Hot`, una región UE (`westeurope` por defecto, parámetro). Nombre global único: `stbuenavista<sufijo>` con `uniqueString(resourceGroup().id)`.
+`StorageV2`, `Standard_LRS` (la redundancia más barata; los datos se pueden recargar desde el CSV y la auditoría es la única pérdida real, aceptable para este proyecto), `accessTier: Hot`, una región UE (`spaincentral`, parámetro `location`). Nombre global único: `stbuenavista<sufijo>` con `uniqueString(resourceGroup().id)`.
 
 Coste estimado (**a verificar** en euros): almacenamiento de Table LRS ≈ 0,04 €/GB/mes y transacciones ≈ 0,0004 € por 10 000. Con < 100 MB y < 100 000 transacciones al mes: **≈ 0,01 €/mes**.
 
@@ -91,7 +91,7 @@ Riesgo: la URL del desencadenador HTTP (con firma SAS) permite invocar la Logic 
 Antes del paso de despliegue: `azure/login` con `id-buenavista-app` y `az staticwebapp secrets list --query properties.apiKey -o tsv`, enmascarado con `::add-mask::` y pasado como `azure_static_web_apps_api_token`. Se elimina el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN`. Solo push a `main`: **sin previews de PR**, y además `stagingEnvironmentPolicy: Disabled` en la SWA. Si falta la variable `AZURE_CLIENT_ID_APP`, termina en verde con aviso.
 
 ## Recursos (resumen de propiedades)
-- `Microsoft.Web/staticSites` (Free, `westeurope`, `stagingEnvironmentPolicy: Disabled`, `allowConfigFileUpdates: true`) + `config/appsettings` (`TABLES_CONNECTION`).
+- `Microsoft.Web/staticSites` (Free, `westeurope` (parámetro `swaLocation`), `stagingEnvironmentPolicy: Disabled`, `allowConfigFileUpdates: true`) + `config/appsettings` (`TABLES_CONNECTION`).
 - `Microsoft.Storage/storageAccounts` (`kind: StorageV2`, `sku: Standard_LRS`, `accessTier: Hot`, `minimumTlsVersion: TLS1_2`, `supportsHttpsTrafficOnly: true`, `allowBlobPublicAccess: false`, `allowCrossTenantReplication: false`, `allowSharedKeyAccess: true`, `publicNetworkAccess: Enabled`, `networkAcls.defaultAction: Allow`).
 - `Microsoft.Storage/storageAccounts/tableServices` `default`. Sin `tables` en este cambio.
 - `Microsoft.Logic/workflows` (consumo, identidad asignada por el sistema) + asignación del rol personalizado de corte sobre la cuenta.

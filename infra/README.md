@@ -1,0 +1,89 @@
+# Infraestructura (Azure)
+
+Todo lo de Azure se declara en `main.bicep` y se despliega con el workflow [`infra.yml`](../.github/workflows/infra.yml). Diseño y decisiones: [`specs/002-infra-bicep/`](../specs/002-infra-bicep/).
+
+| Recurso | Nombre | Región | Coste esperado |
+|---|---|---|---|
+| Static Web App Free | `swa-buenavista` | `westeurope` (única región UE del plan Free) | 0 € |
+| Cuenta de Storage (solo Table) | `stbuenavista…` | `spaincentral` | ≈ 0,01 €/mes (estimación) |
+| Logic App de corte (consumo) | `logic-buenavista-corte` | `spaincentral` | 0 € en reposo |
+| Grupo de acciones | `ag-buenavista-corte` | global | 0 € |
+| Presupuesto de 1 €/mes | `presupuesto-buenavista` | grupo de recursos | 0 € |
+
+`westeurope` no admite recursos nuevos en esta suscripción (`RequestDisallowedByAzure`), por eso Storage, la Logic App y las identidades van en `spaincentral`. El grupo de recursos sí está en `westeurope`: solo guarda metadatos.
+
+## Pasos únicos (ya hechos el 15-11-2026)
+
+Desde Azure Cloud Shell en **Bash**:
+
+```bash
+RG=rg-buenavista-incidencias
+REPO=rafmaresp/buenavista-urba
+LOC=spaincentral
+SCOPE=/subscriptions/<suscripción>/resourceGroups/$RG
+
+# Proveedores y grupo
+for p in Microsoft.Storage Microsoft.Web Microsoft.Logic Microsoft.Insights Microsoft.CostManagement Microsoft.Consumption Microsoft.ManagedIdentity; do az provider register -n $p; done
+az group create -n $RG -l westeurope
+
+# Identidades de GitHub (OIDC, sin secretos)
+for n in infra app; do az identity create -g $RG -n id-buenavista-$n -l $LOC -o none; done
+az identity federated-credential create -g $RG --identity-name id-buenavista-infra -n github-infra --issuer https://token.actions.githubusercontent.com --subject repo:$REPO:environment:infra --audiences api://AzureADTokenExchange
+az identity federated-credential create -g $RG --identity-name id-buenavista-app -n github-produccion --issuer https://token.actions.githubusercontent.com --subject repo:$REPO:environment:produccion --audiences api://AzureADTokenExchange
+
+# Rol de corte: solo leer y modificar la cuenta (ni claves ni datos)
+cat > rol-corte.json <<JSON
+{ "Name": "Buenavista corte de Storage",
+  "Description": "Solo leer y modificar la cuenta de Storage para cortar el acceso de red. No lee claves ni datos.",
+  "Actions": ["Microsoft.Storage/storageAccounts/read", "Microsoft.Storage/storageAccounts/write"],
+  "NotActions": [], "DataActions": [], "NotDataActions": [], "AssignableScopes": ["$SCOPE"] }
+JSON
+az role definition create --role-definition @rol-corte.json
+
+# Permisos de id-buenavista-infra: Contributor y administrador de RBAC limitado al rol de corte y a Contributor
+set +H
+CORTE=$(az role definition list --custom-role-only true --name "Buenavista corte de Storage" --query "[0].name" -o tsv)
+CONTRIB=b24988ac-6180-42a0-ab88-20f7382dd24c
+INFRA=$(az identity show -g $RG -n id-buenavista-infra --query principalId -o tsv)
+az role assignment create --assignee-object-id $INFRA --assignee-principal-type ServicePrincipal --role Contributor --scope $SCOPE
+COND="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$CORTE, $CONTRIB})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$CORTE, $CONTRIB}))"
+az role assignment create --assignee-object-id $INFRA --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope $SCOPE --condition "$COND" --condition-version 2.0
+```
+
+En GitHub (Settings del repo):
+
+- Entorno `infra` con revisor obligatorio `rafmaresp` (sin *Prevent self-reviews*) y el secreto de entorno `AVISOS_EMAIL`.
+- Entorno `produccion` limitado a la rama `main`.
+- Variables del repositorio: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID_INFRA` y `AZURE_CLIENT_ID_APP` (los `clientId` de las identidades; no son secretos).
+
+## Desplegar
+
+1. Un PR que toca `infra/**` valida el Bicep y, cuando Rafa aprueba el entorno `infra`, publica el `what-if` en el resumen del job (solo recursos y tipo de cambio: las propiedades llevarían el SAS y el correo).
+2. Tras fusionar: Actions → **Infraestructura (Bicep)** → *Run workflow* en `main` → aprobar el entorno `infra`.
+3. Después, el despliegue de la app (`azure-swa.yml`) obtiene el token de la SWA por OIDC en cada push a `main`. Tras el primer despliegue de infraestructura, borra el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN` si existía.
+
+Una tabla nueva se declara en `main.bicep` (`tableServices/tables`) y se despliega la infraestructura **antes** que la app que la usa: la app no puede crear tablas.
+
+## Reactivar tras un corte
+
+Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage en `publicNetworkAccess: Disabled`. La API deja de acceder a los datos, pero no se borra nada.
+
+1. Revisa la causa en el portal: Cost Management → Análisis de costes del grupo `rg-buenavista-incidencias`.
+2. Corrige la causa (por ejemplo, rota el SAS si se ha filtrado; ver abajo).
+3. Ejecuta el despliegue de `infra.yml`, que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+
+Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
+
+## SAS de datos (`TABLES_CONNECTION`)
+
+- Lo genera el despliegue con la clave de la cuenta (`sasKey`, por defecto `key1`): solo Table, solo entidades (no crea ni borra tablas), leer, añadir, actualizar, borrar y consultar, solo HTTPS.
+- **Caduca un año después de cada despliegue.** Si nadie despliega en un año, la API pierde el acceso: despliega antes.
+- `main.bicep` sustituye **todos** los app settings de la SWA: cualquier otro setting de la app se declara ahí.
+
+### Rotar claves (si el SAS se filtra)
+
+Un SAS de cuenta solo se revoca regenerando la clave que lo firma:
+
+1. Regenera la clave que **no** firma (`key2`): `az storage account keys renew -g rg-buenavista-incidencias -n <cuenta> --key key2`.
+2. Cambia `sasKey` a `'key2'` en `main.bicepparam`, fusiona y despliega: la app pasa a un SAS firmado con `key2`.
+3. Regenera `key1`: el SAS filtrado deja de valer.

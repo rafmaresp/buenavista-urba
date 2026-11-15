@@ -9,7 +9,7 @@ Web de incidencias de la urbanización Buenavista I (Dos Hermanas): farolas fund
 - **Datos**: Azure Table Storage con `@azure/data-tables` (aún sin usar).
 - **Hosting**: Azure Static Web Apps (plan Free).
 
-Producto y roadmap: `docs/producto.md` y `docs/roadmap.md`; specs en `specs/`. La infraestructura Azure se creará con Bicep en la feature `002-infra-bicep`; hasta entonces el despliegue se omite si falta el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+Producto y roadmap: `docs/producto.md` y `docs/roadmap.md`; specs en `specs/`. La infraestructura Azure (SWA, Table Storage, presupuesto con corte automático) está en Bicep: ver [`infra/README.md`](infra/README.md). El despliegue de la app obtiene el token de la SWA por OIDC y se omite con un aviso si falta la variable `AZURE_CLIENT_ID_APP` o la SWA.
 
 ## Requisitos
 

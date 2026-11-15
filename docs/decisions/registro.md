@@ -243,3 +243,10 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** Que cada funcionalidad llegue ya con su integración y su e2e. Hoy solo hay pruebas de humo: la página carga y `/api/health` responde.
 - El job `e2e` **no** es un check obligatorio del ruleset. Si Rafa lo quiere obligatorio, lo añade él al ruleset.
 - No se renombra ni se quita ninguno de los cuatro checks obligatorios.
+
+### 2026-11-15: Recursos de Azure en `spaincentral`; SWA en `westeurope`
+
+**By:** Rafa (al preparar Azure con Claude)
+**What:** La cuenta de Storage, la Logic App de corte y las identidades de GitHub van en `spaincentral`. La Static Web App Free sigue en `westeurope`, la única región UE del plan Free. El grupo de recursos `rg-buenavista-incidencias` queda en `westeurope` (solo guarda metadatos). La región es un parámetro de `infra/main.bicep`.
+**Why:** La suscripción nueva de pago por uso no admite recursos nuevos en `westeurope` (`RequestDisallowedByAzure`, "region not accepting new customers"). `spaincentral` es UE, así que no cambia nada del RGPD.
+- Riesgo abierto: si Azure también rechaza la SWA en `westeurope`, se verá en el primer `what-if` o despliegue y Rafa decidirá la alternativa.
