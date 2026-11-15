@@ -45,3 +45,39 @@ export async function teselasSinRed(page: Page) {
   await page.route('https://www.ign.es/**', (ruta) => ruta.fulfill(vacia));
   await page.route('https://tile.openstreetmap.org/**', (ruta) => ruta.fulfill(vacia));
 }
+
+/**
+ * Entra como directiva sin Google ni usuarios reales: un Google Identity Services falso (su botón
+ * llama al callback con un token de prueba), /api/config con un client ID y /api/yo con rol
+ * directiva. Solo prueba la web; la API real exige un token de Google válido (api/ y Azurite).
+ */
+export async function entrarComoDirectiva(page: Page) {
+  await page.addInitScript(() => {
+    let callback: ((r: { credential: string }) => void) | undefined;
+    (window as unknown as { google: unknown }).google = {
+      accounts: {
+        id: {
+          initialize: (o: { callback: (r: { credential: string }) => void }) => {
+            callback = o.callback;
+          },
+          renderButton: (contenedor: HTMLElement) => {
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.textContent = 'Entrar (prueba)';
+            boton.addEventListener('click', () => callback?.({ credential: 'token-de-prueba' }));
+            contenedor.append(boton);
+          },
+        },
+      },
+    };
+  });
+  await page.route('**/api/config', (ruta) =>
+    ruta.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ googleClientId: 'cliente-prueba' }) }),
+  );
+  await page.route('**/api/yo', (ruta) =>
+    ruta.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ uid: 'u', rol: 'directiva' }) }),
+  );
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Entrar (prueba)' }).click();
+  await page.getByRole('link', { name: 'Ir al inicio' }).click();
+}

@@ -1,6 +1,23 @@
 import { odata } from '@azure/data-tables';
 import { type ClienteAuditoria, auditar, entidadDeAuditoria } from './auditoria';
-import { type EntidadFarola, type Farola, PARTICION_FAROLAS, entidadDeFarola } from './farolas';
+import {
+  type EntidadFarola,
+  type Farola,
+  type FarolaPublica,
+  PARTICION_FAROLAS,
+  type Posicion,
+  type Precision,
+  entidadDeFarola,
+} from './farolas';
+
+/** Campos que cambia una reubicación (y los que se restauran si la auditoría falla). */
+interface CambioPosicion {
+  partitionKey: string;
+  rowKey: string;
+  lat: number;
+  lon: number;
+  precision: Precision;
+}
 
 /** Lo que el repositorio necesita de la tabla Farolas. */
 export interface ClienteTablaFarolas {
@@ -9,6 +26,12 @@ export interface ClienteTablaFarolas {
   }): AsyncIterable<T & { rowKey?: string }>;
   createEntity(entity: EntidadFarola): Promise<unknown>;
   deleteEntity(partitionKey: string, rowKey: string): Promise<unknown>;
+  getEntity<T extends object>(partitionKey: string, rowKey: string): Promise<T & { etag: string }>;
+  updateEntity(entity: CambioPosicion, mode: 'Merge', options: { etag: string }): Promise<{ etag?: string }>;
+}
+
+function statusCode(e: unknown): number | undefined {
+  return (e as { statusCode?: number }).statusCode;
 }
 
 /**
@@ -63,6 +86,56 @@ export class RepositorioFarolas {
       throw errorAuditoria;
     }
   }
+
+  /**
+   * Mueve una farola existente (nunca la crea) y fija su precisión a `verificada`; lo audita como
+   * `farola.reubicacion` con la posición anterior y la nueva. La escritura va condicionada al ETag
+   * leído: si otro la cambió entretanto, FarolaCambiada y no se pisa nada.
+   */
+  async reubicar(id: string, posicion: Posicion, actor: string): Promise<FarolaPublica> {
+    let actual: { calle: string; lat: number; lon: number; precision: Precision; etag: string };
+    try {
+      actual = await this.farolas.getEntity(PARTICION_FAROLAS, id);
+    } catch (e) {
+      if (statusCode(e) === 404) throw new FarolaNoEncontrada(id);
+      throw e;
+    }
+
+    const antes: CambioPosicion = { partitionKey: PARTICION_FAROLAS, rowKey: id, lat: actual.lat, lon: actual.lon, precision: actual.precision };
+    const despues: CambioPosicion = { partitionKey: PARTICION_FAROLAS, rowKey: id, lat: posicion.lat, lon: posicion.lon, precision: 'verificada' };
+    const entrada = entidadDeAuditoria({
+      actor,
+      accion: 'farola.reubicacion',
+      entidad: 'Farolas',
+      clave: id,
+      antes: { lat: antes.lat, lon: antes.lon, precision: antes.precision },
+      despues: { lat: despues.lat, lon: despues.lon, precision: despues.precision },
+    });
+
+    let escrita: { etag?: string };
+    try {
+      escrita = await this.farolas.updateEntity(despues, 'Merge', { etag: actual.etag });
+    } catch (e) {
+      if (statusCode(e) === 412) throw new FarolaCambiada(id);
+      throw e;
+    }
+
+    try {
+      await auditar(this.auditoria, entrada);
+    } catch (errorAuditoria) {
+      // Se restaura lo anterior condicionado al ETag de nuestra escritura: si alguien escribió
+      // después, no se pisa su cambio y queda para revisar a mano.
+      try {
+        if (!escrita.etag) throw new Error('sin ETag');
+        await this.farolas.updateEntity(antes, 'Merge', { etag: escrita.etag });
+      } catch {
+        throw new ReubicacionSinAuditar(id);
+      }
+      throw errorAuditoria;
+    }
+
+    return { id, calle: actual.calle, lat: despues.lat, lon: despues.lon };
+  }
 }
 
 /** La auditoría falló y no se pudo deshacer el alta: hay que revisarlo a mano. */
@@ -70,5 +143,28 @@ export class AltaSinAuditar extends Error {
   constructor(id: string) {
     super(`${id} se dio de alta pero no se pudo auditar ni deshacer: revísala a mano`);
     this.name = 'AltaSinAuditar';
+  }
+}
+
+/** La auditoría falló y no se pudo restaurar la posición anterior: hay que revisarlo a mano. */
+export class ReubicacionSinAuditar extends Error {
+  constructor(id: string) {
+    super(`${id} se reubicó pero no se pudo auditar ni restaurar: revísala a mano`);
+    this.name = 'ReubicacionSinAuditar';
+  }
+}
+
+export class FarolaNoEncontrada extends Error {
+  constructor(id: string) {
+    super(`${id} no está en el catálogo`);
+    this.name = 'FarolaNoEncontrada';
+  }
+}
+
+/** Otra escritura cambió la farola desde que se leyó (412 por el ETag). */
+export class FarolaCambiada extends Error {
+  constructor(id: string) {
+    super(`${id} cambió mientras se reubicaba`);
+    this.name = 'FarolaCambiada';
   }
 }

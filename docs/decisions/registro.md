@@ -317,3 +317,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "Si eres comunero, poder poner una incidencia en una farola y luego poder verla" (Rafa).
 - Usuarios de prueba con sesión para el e2e: siguen pendientes (necesitan diseño revisado por Rai); el alta con identidad la prueban las unitarias y la integración contra Azurite.
 
+
+### 2026-11-15: Reubicar farolas, sin crear ni ver la precisión
+
+**By:** Rafa (spec resumida aprobada en el chat del proyecto)
+**What:** El cambio `reubicar-farola` se parte. En `specs/008-reubicar-farola/` entra solo la reubicación: la directiva pulsa "Mover farola" en la ficha, arrastra la marca, confirma ("¿Mover F07 aquí?") y la web llama a `PUT /api/farolas/{id}`. La API exige rol `directiva`, valida el id y que la posición caiga dentro de la urbanización, y escribe con el ETag leído (409 si otro la movió entretanto). La posición movida queda con precisión `verificada`. `RepositorioFarolas` audita `farola.reubicacion` con antes y después `{lat, lon, precision}` y restaura la posición si la auditoría falla. El SAS de `Farolas` de la app pasa de `r` a `ru` (no `rau`: añadir llega con `POST`). Fuera: crear farolas (`POST`), ver la precisión en el `GET` para la directiva, historial en la app, editar la calle y borrar.
+**Why:** "La de recolocar farolas si eres admin" (Rafa; admin = directiva). Crear farolas y la precisión para la directiva no se pidieron ahora.
+- Precisión `verificada` sin preguntar: la directiva coloca la farola sobre la ortofoto o en campo; elegirla en cada movimiento añadiría un paso mientras nadie la ve.
+- La caché pública de 5 minutos de `GET /api/farolas` se mantiene: quien mueve la farola la ve al momento y el resto, como mucho, a los 5 minutos.

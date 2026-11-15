@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { type ClienteLecturaFarolas, SemillaInvalida, parsearSemilla, respuestaFarolas } from './farolas';
+import { type ClienteLecturaFarolas, SemillaInvalida, parsearSemilla, respuestaFarolas, validarReubicacion } from './farolas';
 
 const semillaReal = readFileSync(join(__dirname, '..', '..', 'data', 'farolas_buenavista.csv'), 'utf8');
 const CABECERA = 'farola,calle,lat,lon,posicion';
@@ -124,5 +124,35 @@ describe('GET /api/farolas', () => {
     });
     expect(res.status).toBe(500);
     expect(res.headers['Cache-Control']).toBe('no-store');
+  });
+});
+
+describe('validarReubicacion (cuerpo de PUT /api/farolas/{id})', () => {
+  it('acepta lat y lon dentro de la urbanización e ignora el resto de campos', () => {
+    expect(validarReubicacion({ lat: 37.3165, lon: -5.9606, calle: 'Otra', precision: 'estimada' })).toEqual({
+      lat: 37.3165,
+      lon: -5.9606,
+    });
+  });
+
+  it('acepta los bordes del recuadro', () => {
+    expect(validarReubicacion({ lat: 37.3, lon: -5.95 })).toEqual({ lat: 37.3, lon: -5.95 });
+    expect(validarReubicacion({ lat: 37.33, lon: -5.98 })).toEqual({ lat: 37.33, lon: -5.98 });
+  });
+
+  it.each([
+    ['nulo', null],
+    ['texto', 'F07'],
+    ['lista', [37.31, -5.96]],
+    ['sin lon', { lat: 37.31 }],
+    ['lat como texto', { lat: '37.31', lon: -5.96 }],
+    ['lat NaN', { lat: Number.NaN, lon: -5.96 }],
+    ['lon infinita', { lat: 37.31, lon: Number.POSITIVE_INFINITY }],
+    ['lat fuera (norte)', { lat: 37.331, lon: -5.96 }],
+    ['lat fuera (sur)', { lat: 37.29, lon: -5.96 }],
+    ['lon fuera (este)', { lat: 37.31, lon: -5.94 }],
+    ['lon fuera (oeste)', { lat: 37.31, lon: -5.99 }],
+  ])('rechaza %s', (_caso, cuerpo) => {
+    expect(validarReubicacion(cuerpo)).toBeUndefined();
   });
 });

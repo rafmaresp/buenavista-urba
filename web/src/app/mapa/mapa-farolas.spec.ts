@@ -2,7 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { Sesion } from '../sesion';
 import { FarolaPublica } from './farolas-cliente';
 import { ErrorAviso, IncidenciaPublica } from './incidencias-cliente';
-import { Avisar, MapaFarolas, contenidoFicha } from './mapa-farolas';
+import * as L from 'leaflet';
+import { ErrorReubicar } from './farolas-cliente';
+import { Avisar, MapaFarolas, Reubicar, contenidoFicha } from './mapa-farolas';
 
 const FAROLAS: FarolaPublica[] = [
   { id: 'F01', calle: 'C. M (paralela A-8032)', lat: 37.3186864, lon: -5.961454 },
@@ -14,12 +16,13 @@ const INC_F02: IncidenciaPublica = { id: 'a1', farola: 'F02', estado: 'Nuevo', c
 
 async function montar(
   cargador: () => Promise<FarolaPublica[]>,
-  opciones: { incidencias?: () => Promise<IncidenciaPublica[]>; avisar?: Avisar } = {},
+  opciones: { incidencias?: () => Promise<IncidenciaPublica[]>; avisar?: Avisar; reubicar?: Reubicar } = {},
 ) {
   const fixture = TestBed.createComponent(MapaFarolas);
   fixture.componentRef.setInput('cargador', cargador);
   fixture.componentRef.setInput('cargadorIncidencias', opciones.incidencias ?? (async () => []));
   if (opciones.avisar) fixture.componentRef.setInput('avisar', opciones.avisar);
+  if (opciones.reubicar) fixture.componentRef.setInput('reubicar', opciones.reubicar);
   await fixture.whenStable();
   fixture.detectChanges();
   await fixture.whenStable();
@@ -188,5 +191,191 @@ describe('contenidoFicha', () => {
     expect(ficha.querySelector('h2')?.textContent).toBe('F09');
     expect(ficha.querySelector('p')?.textContent).toBe('<img src=x onerror=alert(1)>');
     expect(ficha.querySelector('img')).toBeNull();
+  });
+});
+
+describe('MapaFarolas — mover farola (specs/008)', () => {
+  beforeEach(() => TestBed.configureTestingModule({ imports: [MapaFarolas] }));
+
+  const NUEVA = { lat: 37.3189, lon: -5.9611 };
+
+  function comoRol(rol: 'comunero' | 'directiva') {
+    TestBed.inject(Sesion).rol.set(rol);
+  }
+
+  /** La marca de Leaflet de una farola (jsdom no simula el arrastre con el puntero). */
+  function marca(fixture: { componentInstance: MapaFarolas }, id: string): L.Marker {
+    return (fixture.componentInstance as unknown as { marcaDe: Map<string, L.Marker> }).marcaDe.get(id)!;
+  }
+
+  function soltarEn(m: L.Marker, pos: { lat: number; lon: number }) {
+    m.setLatLng([pos.lat, pos.lon]);
+    m.fire('dragend');
+  }
+
+  async function empezarMover(el: HTMLElement, fixture: Parameters<typeof esperar>[0], id = 'F01') {
+    el.querySelector<HTMLElement>(`[title="Farola ${id}"]`)!.click();
+    el.querySelector<HTMLButtonElement>('.leaflet-popup-content .ficha__mover')!.click();
+    await esperar(fixture);
+  }
+
+  function barra(el: HTMLElement) {
+    return el.querySelector<HTMLElement>('.mapa__mover');
+  }
+
+  function boton(el: HTMLElement, texto: string) {
+    return Array.from(el.querySelectorAll<HTMLButtonElement>('.mapa__mover button')).find((b) => b.textContent === texto)!;
+  }
+
+  it('sin sesión la ficha no ofrece "Mover farola" (US3)', async () => {
+    const { el } = await montar(async () => FAROLAS);
+    el.querySelector<HTMLElement>('[title="Farola F01"]')!.click();
+    expect(el.querySelector('.leaflet-popup-content .ficha__mover')).toBeNull();
+  });
+
+  it('un comunero tampoco ve "Mover farola" (US3)', async () => {
+    comoRol('comunero');
+    const { el } = await montar(async () => FAROLAS);
+    el.querySelector<HTMLElement>('[title="Farola F01"]')!.click();
+    expect(el.querySelector('.leaflet-popup-content .ficha__mover')).toBeNull();
+  });
+
+  it('la directiva mueve, confirma y guarda; la marca se queda en la nueva posición (US1)', async () => {
+    comoRol('directiva');
+    const llamadas: [string, number, number][] = [];
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: async (id, lat, lon) => {
+        llamadas.push([id, lat, lon]);
+        return { ...FAROLAS[0]!, lat, lon };
+      },
+    });
+    await empezarMover(el, fixture);
+
+    const m = marca(fixture, 'F01');
+    expect(m.dragging!.enabled()).toBe(true);
+    expect(marca(fixture, 'F02').dragging!.enabled()).toBe(false);
+    expect(el.querySelector('.leaflet-popup-content')).toBeNull();
+    expect(barra(el)?.textContent).toContain('Arrastra F01 a su sitio.');
+    expect(boton(el, 'Guardar').disabled).toBe(true);
+
+    soltarEn(m, NUEVA);
+    await esperar(fixture);
+    expect(barra(el)?.textContent).toContain('¿Mover F01 aquí?');
+    expect(llamadas).toEqual([]);
+
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+
+    expect(llamadas).toEqual([['F01', NUEVA.lat, NUEVA.lon]]);
+    expect(m.getLatLng()).toMatchObject({ lat: NUEVA.lat, lng: NUEVA.lon });
+    expect(m.dragging!.enabled()).toBe(false);
+    expect(barra(el)?.getAttribute('role')).toBe('status');
+    expect(barra(el)?.textContent).toContain('F01 se ha movido.');
+  });
+
+  it('redondea a 7 decimales lo que manda', async () => {
+    comoRol('directiva');
+    const llamadas: number[][] = [];
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: async (id, lat, lon) => {
+        llamadas.push([lat, lon]);
+        return { ...FAROLAS[0]!, lat, lon };
+      },
+    });
+    await empezarMover(el, fixture);
+    soltarEn(marca(fixture, 'F01'), { lat: 37.318912345678, lon: -5.961198765432 });
+    await esperar(fixture);
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+    expect(llamadas).toEqual([[37.3189123, -5.9611988]]);
+  });
+
+  it('Cancelar tras soltar devuelve la marca y no envía nada (US2)', async () => {
+    comoRol('directiva');
+    let llamadas = 0;
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: async () => {
+        llamadas++;
+        return FAROLAS[0]!;
+      },
+    });
+    await empezarMover(el, fixture);
+    const m = marca(fixture, 'F01');
+    soltarEn(m, NUEVA);
+    await esperar(fixture);
+
+    boton(el, 'Cancelar').click();
+    await esperar(fixture);
+
+    expect(llamadas).toBe(0);
+    expect(m.getLatLng()).toMatchObject({ lat: FAROLAS[0]!.lat, lng: FAROLAS[0]!.lon });
+    expect(m.dragging!.enabled()).toBe(false);
+    expect(barra(el)).toBeNull();
+  });
+
+  it('Cancelar antes de soltar sale del modo mover sin cambios (US2)', async () => {
+    comoRol('directiva');
+    const { fixture, el } = await montar(async () => FAROLAS);
+    await empezarMover(el, fixture);
+    boton(el, 'Cancelar').click();
+    await esperar(fixture);
+    expect(marca(fixture, 'F01').dragging!.enabled()).toBe(false);
+    expect(barra(el)).toBeNull();
+  });
+
+  it('mover otra farola cancela la anterior y la devuelve a su sitio', async () => {
+    comoRol('directiva');
+    const { fixture, el } = await montar(async () => FAROLAS);
+    await empezarMover(el, fixture, 'F01');
+    soltarEn(marca(fixture, 'F01'), NUEVA);
+    await empezarMover(el, fixture, 'F02');
+
+    expect(marca(fixture, 'F01').getLatLng()).toMatchObject({ lat: FAROLAS[0]!.lat });
+    expect(marca(fixture, 'F01').dragging!.enabled()).toBe(false);
+    expect(barra(el)?.textContent).toContain('Arrastra F02');
+  });
+
+  it.each([
+    ['sin-sesion', 'Vuelve a entrar'],
+    ['cambiada', 'Otra persona ha movido esta farola'],
+    ['no-valido', 'dentro de la urbanización'],
+    ['no-disponible', 'Inténtalo de nuevo'],
+  ] as const)('si guardar falla (%s) la marca vuelve y se explica (US2)', async (motivo, texto) => {
+    comoRol('directiva');
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: async () => Promise.reject(new ErrorReubicar(motivo)),
+    });
+    await empezarMover(el, fixture);
+    const m = marca(fixture, 'F01');
+    soltarEn(m, NUEVA);
+    await esperar(fixture);
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+
+    expect(m.getLatLng()).toMatchObject({ lat: FAROLAS[0]!.lat, lng: FAROLAS[0]!.lon });
+    expect(m.dragging!.enabled()).toBe(false);
+    expect(barra(el)?.getAttribute('role')).toBe('alert');
+    expect(barra(el)?.textContent).toContain(texto);
+  });
+
+  it('un error inesperado también devuelve la marca', async () => {
+    comoRol('directiva');
+    const { fixture, el } = await montar(async () => FAROLAS, { reubicar: async () => Promise.reject(new Error('x')) });
+    await empezarMover(el, fixture);
+    soltarEn(marca(fixture, 'F01'), NUEVA);
+    await esperar(fixture);
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+    expect(marca(fixture, 'F01').getLatLng()).toMatchObject({ lat: FAROLAS[0]!.lat });
+    expect(barra(el)?.textContent).toContain('Inténtalo de nuevo');
+  });
+
+  it('la ficha sigue mostrando la incidencia de una farola que se puede mover', async () => {
+    comoRol('directiva');
+    const { el } = await montar(async () => FAROLAS, { incidencias: async () => [INC_F02] });
+    el.querySelector<HTMLElement>('[title="Farola F02"]')!.click();
+    const ficha = el.querySelector('.leaflet-popup-content .ficha')!;
+    expect(ficha.querySelector('.ficha__incidencia')).not.toBeNull();
+    expect(ficha.querySelector('.ficha__mover')?.textContent).toBe('Mover farola');
   });
 });
