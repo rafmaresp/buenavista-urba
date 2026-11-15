@@ -77,4 +77,27 @@ describe('Login', () => {
     fixture.detectChanges();
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('No tienes acceso');
   });
+
+  it('al salir vuelve a mostrar el mismo botón de Google, sin recargar', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ googleClientId: 'cid' }));
+    const { fixture, el } = await montar();
+    const contenedor = (gis.renderButton as ReturnType<typeof vi.fn>).mock.lastCall![0] as HTMLElement;
+    const sesion = TestBed.inject(Sesion);
+    sesion.rol.set('comunero');
+    fixture.detectChanges();
+    expect(contenedor.hidden).toBe(true);
+    sesion.salir();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="boton-google"]')).toBe(contenedor);
+    expect(contenedor.hidden).toBe(false);
+  });
+
+  it('con la sesión ya abierta, /login pinta el botón (oculto) y no queda en no disponible', async () => {
+    TestBed.inject(Sesion).rol.set('directiva');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ googleClientId: 'cid' }));
+    const { el } = await montar();
+    expect(gis.renderButton).toHaveBeenCalled();
+    expect(el.querySelector('[role="status"]')?.textContent).toContain('Has entrado como directiva');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
 });

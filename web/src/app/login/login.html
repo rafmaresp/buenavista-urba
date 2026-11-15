@@ -18,10 +18,11 @@
     <p><a routerLink="/privacidad">Política de privacidad completa</a></p>
   </div>
 
+  <!-- Fuera del @if: GIS pinta el botón una sola vez y tiene que seguir ahí al salir. -->
+  <div #boton data-testid="boton-google" [hidden]="sesion.dentro()"></div>
   @if (sesion.dentro()) {
     <p role="status">Has entrado como {{ sesion.rol() }}. <a routerLink="/">Ir al inicio</a></p>
   } @else {
-    <div #boton data-testid="boton-google"></div>
     @switch (estado()) {
       @case ('cargando') {
         <p role="status">Cargando…</p>
