@@ -21,7 +21,7 @@
 - [x] 2.1 `main.bicep` + `main.bicepparam`: SWA Free sin staging, app setting `TABLES_CONNECTION` con SAS de `listAccountSas()` (Table, entidades, `raudl`, HTTPS, caducidad parámetro a 1 año), sin outputs secretos
 - [x] 2.2 Cuenta de Storage con las propiedades de `plan.md` (StorageV2, LRS, TLS 1.2, solo HTTPS, sin blobs públicos, sin replicación entre inquilinos) y `tableServices/default`, sin tablas
 - [x] 2.3 Logic App de consumo + asignación del rol de corte, grupo de acciones, presupuesto de 1 € con 4 notificaciones (corte solo en `Actual` 100)
-- [ ] 2.4 **Verificar** que `@azure/data-tables` conecta con la cadena `TableEndpoint=…;SharedAccessSignature=…` desde una Function gestionada y desde Azurite, y que el SAS no puede crear ni borrar tablas (Azurite: `api/src/tables.integration.test.ts`; Function gestionada: pendiente del primer despliegue)
+- [ ] 2.4 **Verificar** que `@azure/data-tables` conecta con la cadena `TableEndpoint=…;SharedAccessSignature=…` desde una Function gestionada y desde Azurite, y que el SAS no puede crear ni borrar tablas (Azurite: `api/src/tables.integration.test.ts`, salvo consultar entidades, que Azurite 3.35 rechaza con `srt=o` aunque Azure lo admite; Function gestionada y consulta: pendiente del primer despliegue)
 - [ ] 2.5 **Verificar** que el rol de corte basta para el `PATCH` de `publicNetworkAccess` y no permite `listKeys`, las tarifas vigentes en euros de Table Storage, Logic Apps y grupo de acciones, y si Storage factura las peticiones que rechaza con `publicNetworkAccess: Disabled`
 - [ ] 2.6 `bicep build` y `bicep lint` sin avisos en la CI
 
