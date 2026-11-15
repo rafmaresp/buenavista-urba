@@ -1,9 +1,10 @@
 name: Desplegar infraestructura (Bicep)
 
-# A mano (workflow_dispatch), solo desde main y tras aprobar el entorno `infra`: despliega
-# infra/main.bicep. También reactiva Storage tras un corte. El Bicep ya se validó en el PR
+# Despliega infra/main.bicep. Lo llama azure-swa.yml en cada push a main (antes de la carga y de
+# la app); a mano sirve para reactivar Storage tras un corte. El Bicep ya se validó en el PR
 # (infra.yml); si no compila, `az deployment group create` falla igual.
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions: {}

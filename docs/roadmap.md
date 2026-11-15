@@ -18,7 +18,7 @@ Una feature de Spec Kit (`specs/NNN-nombre/`) = un issue = un PR. Tamaños: **S*
 | 10 | `baches-flag` | Baches listos pero apagados | Feature flag servido por la API (apagado en producción), tramos de calle, reporte sobre un tramo, duplicados por cercanía. Se partirá si sale L. | 5, 7 | M–L |
 | 11 | `retencion-y-derechos` | Cumplir los plazos de conservación | Script o Function manual de los devs: purga de comentarios y desvinculación de autores y votos a 12 meses, borrado de bajas a 30 días, purga de auditoría > 3 años, supresión a petición; cada ejecución registrada. Antes del primer año en producción. | 4 · plazos confirmados por Rafa | S |
 
-Paralelizable: 4b, 6 y 8 tras 4/5; 9 en cuanto haya proveedor. Cada cambio arranca solo cuando sus decisiones pendientes están cerradas. Cada cambio que añade una tabla la declara en `infra/` (Bicep) en su propio PR, y el deploy manual de infra va antes que el de la app.
+Paralelizable: 4b, 6 y 8 tras 4/5; 9 en cuanto haya proveedor. Cada cambio arranca solo cuando sus decisiones pendientes están cerradas. Cada cambio que añade una tabla la declara en `infra/` (Bicep) en su propio PR, y el despliegue continuo (`azure-swa.yml`) aplica la infra antes que la app.
 
 ## Dónde va la auditoría: transversal desde el cambio 2
 

@@ -1,9 +1,10 @@
 name: Despliegue Azure Static Web Apps
 
-# Solo en push a main (y a mano). No hay previews por PR: no se dispara en pull_request.
-# El token de despliegue se obtiene por OIDC con id-buenavista-app (entorno `produccion`, solo main).
-# Sin la variable AZURE_CLIENT_ID_APP, o si la SWA no existe, termina en verde con un aviso.
-# Hasta el primer despliegue de infra.yml, id-buenavista-app no tiene ningún rol y el login falla: es esperado.
+# Despliegue continuo: en cada push a main (y a mano), en este orden y sin aprobaciones manuales
+# (decisión de Rafa del 2026-11-15): infraestructura (Bicep) → carga de farolas (solo altas) → app.
+# No hay previews por PR: no se dispara en pull_request.
+# El token de la app se obtiene por OIDC con id-buenavista-app (entorno `produccion`, solo main).
+# Sin la variable AZURE_CLIENT_ID_APP, o si la SWA no existe, el job de la app termina en verde con un aviso.
 on:
   push:
     branches: [main]
@@ -16,7 +17,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  infra:
+    name: Infraestructura
+    if: vars.AZURE_CLIENT_ID_INFRA != ''
+    uses: ./.github/workflows/infra-desplegar.yml
+    permissions:
+      contents: read
+      id-token: write
+
+  farolas:
+    name: Farolas
+    needs: infra
+    uses: ./.github/workflows/cargar-farolas.yml
+    permissions:
+      contents: read
+      id-token: write
+
   deploy:
+    name: App
+    needs: farolas
+    # Sin identidad de infra (variable vacía) se saltan los dos anteriores y la app se despliega igual.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     environment: produccion
     permissions:
@@ -42,7 +63,7 @@ jobs:
           # Solo se omite si la SWA no existe; cualquier otro fallo (permisos, ARM) deja el job en rojo.
           if ! az staticwebapp show -n "$SWA" -g "$RG" --only-show-errors -o none 2> err.txt; then
             if grep -qE 'ResourceNotFound|ResourceGroupNotFound' err.txt; then
-              echo "::notice::La SWA $SWA no existe todavía (¿falta desplegar infra.yml?); despliegue omitido."
+              echo "::notice::La SWA $SWA no existe todavía (¿falta desplegar la infraestructura?); despliegue omitido."
               exit 0
             fi
             cat err.txt

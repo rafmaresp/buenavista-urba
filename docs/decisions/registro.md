@@ -288,3 +288,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 - Table Storage no tiene transacciones entre tablas: el hueco se cierra deshaciendo. Si también falla deshacer, el repositorio lanza un error propio (`AltaSinAuditar`) para revisarlo a mano.
 - Descartado, servicio asíncrono con cola: las Functions de SWA Free solo atienden HTTP y Table Storage no tiene change feed; exigiría una Function App aparte de pago.
 - Deshacer un alta exige borrar: el SAS de `Farolas` del workflow de carga pasa a `rad`. El de la app sigue en `r` hasta el cambio 8.
+
+### 2026-11-15: Despliegue continuo sin aprobaciones manuales
+
+**By:** Rafa
+**What:** Cada push a `main` despliega solo, en este orden: infraestructura (Bicep), carga de farolas (solo altas) y app. `azure-swa.yml` llama a `infra-desplegar.yml` y `cargar-farolas.yml`, que siguen pudiendo lanzarse a mano. El entorno `infra` deja de tener revisor obligatorio. Sustituye al despliegue manual de infraestructura y de la carga con aprobación de `infra`.
+**Why:** "Esto no es despliegue continuo, no quiero estar autorizando subidas; te pido algo y tú lo haces" (Rafa). El control queda en la fusión del PR, que sigue haciendo Rafa con la CI, el `what-if` y el revisor en verde.
+- Contrapartida aceptada: sin revisor en `infra`, el `what-if` de cualquier PR de una rama del propio repo obtiene la identidad de infra (Contributor del grupo) sin aprobación. Solo Rafa y Claude crean ramas; los PR desde forks no la reciben.
+- Las tres fases son idempotentes: redesplegar el Bicep renueva los SAS de la app (un año más) y la carga dice "Altas: 0".

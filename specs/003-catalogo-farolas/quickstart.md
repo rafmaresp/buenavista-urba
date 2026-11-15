@@ -9,8 +9,6 @@ Job `api` (Azurite ya arrancado): `npm ci && npm run build && npm test` en `api/
 - `GET /api/farolas`: sin precisión, ordenado, caché 5 min, error genérico sin caché;
 - integración: carga en vacío → 70 farolas y 70 entradas; segunda carga → 0 cambios; farola existente no se toca; SAS de app (`Farolas: r`, `Auditoria: ra`) no escribe farolas ni modifica o borra auditoría; tablas del código = tablas del Bicep.
 
-## En Azure (Rafa, tras fusionar)
+## En Azure (tras fusionar)
 
-1. **Infraestructura (Bicep)** → *Run workflow* en `main` → aprobar `infra`. Crea `Farolas` y `Auditoria` y sustituye `TABLES_CONNECTION` por `FAROLAS_CONNECTION` y `AUDITORIA_CONNECTION`.
-2. **Cargar farolas** → *Run workflow* en `main` → aprobar `infra`. El resumen debe decir "70 altas". Relanzarlo debe decir "0 altas".
-3. **Despliegue Azure Static Web Apps** (se lanza solo al fusionar; si ya corrió antes del paso 1, relánzalo). Abrir `https://<swa>/api/farolas`: 70 farolas, sin `precision`, cabecera `Cache-Control: public, max-age=300`. Esto verifica también que el SAS de servicio permite consultar entidades en Azure.
+Desde el despliegue continuo (registro, 2026-11-15) no hay pasos manuales: el push a `main` ejecuta infraestructura (crea `Farolas` y `Auditoria` y sustituye `TABLES_CONNECTION` por `FAROLAS_CONNECTION` y `AUDITORIA_CONNECTION`), carga (el resumen de la primera vez dice "Altas: 70"; las siguientes, "Altas: 0") y app. Después, abrir `https://<swa>/api/farolas`: 70 farolas, sin `precision`, cabecera `Cache-Control: public, max-age=300`. Esto verifica también que el SAS de servicio permite consultar entidades en Azure.
