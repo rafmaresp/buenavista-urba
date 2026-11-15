@@ -35,9 +35,8 @@ jobs:
           CORTE_ROLE_ID: 00000000-0000-0000-0000-000000000000
         run: |
           az bicep install --only-show-errors
-          BICEP="$HOME/.azure/bin/bicep"
-          "$BICEP" --version
-          salida=$( { "$BICEP" lint infra/main.bicep && "$BICEP" build infra/main.bicep --stdout > /dev/null && "$BICEP" build-params infra/main.bicepparam --stdout > /dev/null; } 2>&1 ) || { echo "$salida"; exit 1; }
+          az bicep version --only-show-errors
+          salida=$( { az bicep lint --file infra/main.bicep && az bicep build --file infra/main.bicep --stdout > /dev/null && az bicep build-params --file infra/main.bicepparam --stdout > /dev/null; } 2>&1 ) || { echo "$salida"; exit 1; }
           echo "$salida"
           if grep -qE ': (Warning|Error) ' <<<"$salida"; then
             echo "::error::El Bicep tiene avisos o errores"
