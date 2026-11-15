@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auditar } from './auditoria';
+import { auditar, entidadDeAuditoria } from './auditoria';
 import {
   clienteAdmin,
   clienteConCadenaSas,
@@ -44,14 +44,17 @@ describe('Table Storage (Azurite)', () => {
   it.runIf(hayAzuriteConClave)('el SAS de Auditoria de la app añade y lee, pero no modifica ni borra', async () => {
     await conTablasTemporales(['Auditoria'], async ([tabla]) => {
       const app = clienteConSas(tabla!, { query: true, add: true });
-      await auditar(app, {
-        actor: 'sistema:prueba',
-        accion: 'farola.alta',
-        entidad: 'Farolas',
-        clave: 'F01',
-        antes: null,
-        despues: { lat: 37.31 },
-      });
+      await auditar(
+        app,
+        entidadDeAuditoria({
+          actor: 'sistema:prueba',
+          accion: 'farola.alta',
+          entidad: 'Farolas',
+          clave: 'F01',
+          antes: null,
+          despues: { lat: 37.31 },
+        }),
+      );
       const entradas = [];
       for await (const e of app.listEntities<{ clave: string }>()) entradas.push(e);
       expect(entradas.map((e) => e.clave)).toEqual(['F01']);
