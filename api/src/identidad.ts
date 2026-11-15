@@ -86,7 +86,11 @@ export async function identificar(cabeceras: Cabeceras, deps: DepsIdentidad): Pr
     if (!encontrado) return SIN_ACCESO();
     usuario = encontrado;
     if (usuario.estado !== 'activo' || !esRol(usuario.rol)) return SIN_ACCESO();
-    if (!usuario.sub) await repo.vincularSub(usuario, datos.sub);
+    if (!usuario.sub) {
+      const vinculado = await vincularOReleer(repo, usuario, datos.sub);
+      if (!vinculado) return SIN_ACCESO();
+      usuario = vinculado;
+    }
   } catch (e) {
     // Solo el nombre y el código: el mensaje de un RestError puede llevar la URL con el SAS.
     const error = e as { name?: string; statusCode?: number };
@@ -95,6 +99,21 @@ export async function identificar(cabeceras: Cabeceras, deps: DepsIdentidad): Pr
   }
 
   return { ok: true, usuario: { uid: usuario.uid, rol: usuario.rol as Rol } };
+}
+
+/**
+ * Vincula el `sub`. Si otra petición del mismo primer login lo vinculó antes (412 por el ETag),
+ * se relee por `sub` en lugar de fallar; si la fila quedó con otro `sub`, no hay acceso.
+ */
+async function vincularOReleer(repo: RepositorioUsuarios, usuario: Usuario, sub: string): Promise<Usuario | undefined> {
+  try {
+    await repo.vincularSub(usuario, sub);
+    return usuario;
+  } catch (e) {
+    if ((e as { statusCode?: number }).statusCode !== 412) throw e;
+    const releido = await repo.buscarPorSub(sub);
+    return releido.length === 1 && releido[0]!.estado === 'activo' && esRol(releido[0]!.rol) ? releido[0] : undefined;
+  }
 }
 
 /** Por `sub` si ya está vinculado; si no, por email, y solo si esa fila aún no tiene otro `sub`. */

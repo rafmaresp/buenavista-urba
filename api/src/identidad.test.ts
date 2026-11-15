@@ -66,6 +66,38 @@ describe('identificar() — entra quien está en la lista (US1)', () => {
   });
 });
 
+describe('identificar() — primer login concurrente', () => {
+  it('si otra petición vinculó antes (412), relee por sub y entra sin auditar de nuevo', async () => {
+    const { deps, filas, orden } = preparar();
+    // La fila cambió entre la lectura y la escritura: otra petición fijó el mismo sub.
+    const repoOriginal = deps.usuarios();
+    deps.usuarios = () => repoOriginal;
+    const buscarPorEmail = repoOriginal.buscarPorEmail.bind(repoOriginal);
+    repoOriginal.buscarPorEmail = async (email) => {
+      const r = await buscarPorEmail(email);
+      filas[0]!.sub = 'google-ana';
+      filas[0]!.etag = 'W/"2"';
+      return r;
+    };
+    expect(await identificar(cabeceras(), deps)).toEqual({ ok: true, usuario: { uid: UID_ANA, rol: 'comunero' } });
+    expect(orden).toEqual([`vincular ${UID_ANA}`]);
+  });
+
+  it('si la fila quedó con otro sub tras el 412, 403', async () => {
+    const { deps, filas } = preparar();
+    const repoOriginal = deps.usuarios();
+    deps.usuarios = () => repoOriginal;
+    const buscarPorEmail = repoOriginal.buscarPorEmail.bind(repoOriginal);
+    repoOriginal.buscarPorEmail = async (email) => {
+      const r = await buscarPorEmail(email);
+      filas[0]!.sub = 'google-otro';
+      filas[0]!.etag = 'W/"2"';
+      return r;
+    };
+    expect(await identificar(cabeceras(), deps)).toEqual({ ok: false, respuesta: SIN_ACCESO });
+  });
+});
+
 describe('identificar() — quien no está autorizado no entra (US2)', () => {
   it('sin cabecera o con ella vacía: 401', async () => {
     const { deps, verificar } = preparar();
