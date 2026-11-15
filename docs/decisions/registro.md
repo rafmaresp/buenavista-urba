@@ -317,6 +317,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "Si eres comunero, poder poner una incidencia en una farola y luego poder verla" (Rafa).
 - Usuarios de prueba con sesión para el e2e: siguen pendientes (necesitan diseño revisado por Rai); el alta con identidad la prueban las unitarias y la integración contra Azurite.
 
+### 2026-11-15: Alta de usuarios por secreto en el despliegue de infra
+
+**By:** Rafa
+**What:** Las altas en la lista cerrada (`specs/007-alta-usuarios/`) las hace el despliegue de infraestructura a partir del secreto de entorno `USUARIOS_ALTA` (`infra`, una línea `correo,rol`), como la siembra de farolas: solo da de alta los correos que faltan, auditados como `usuario.alta` con actor `sistema:carga` y sin correo, con un SAS de 1 h `rad` solo en ese job (la app sigue con `ru`). Nunca modifica un usuario existente. El antiguo 4c se parte: baja, supresión, cambio de rol, registro de actividades y nota de EIPD pasan al 4d.
+**Why:** "Dame de alta como admin" (Rafa). El repo es público, así que su correo no puede ir en él; sin ningún usuario en la tabla nadie puede entrar. Mientras la SWA siga fuera de la UE, solo se dan de alta cuentas de prueba de los devs.
 
 ### 2026-11-15: Reubicar farolas, sin crear ni ver la precisión
 
