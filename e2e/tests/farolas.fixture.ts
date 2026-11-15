@@ -30,6 +30,15 @@ export async function simularApiFarolas(page: Page, respuesta: { status: number;
   );
 }
 
+/** Responde GET /api/incidencias (por defecto, ninguna abierta). El POST sigue yendo a la API real. */
+export async function simularApiIncidencias(page: Page, incidencias: unknown[] = []) {
+  await page.route('**/api/incidencias', (ruta) =>
+    ruta.request().method() === 'GET'
+      ? ruta.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ incidencias }) })
+      : ruta.continue(),
+  );
+}
+
 /** Teselas de IGN y OSM vacías: la CI no depende de servidores externos. */
 export async function teselasSinRed(page: Page) {
   const vacia = { status: 204, body: '' };

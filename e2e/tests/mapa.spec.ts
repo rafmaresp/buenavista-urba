@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { farolasDeLaSemilla, simularApiFarolas, teselasSinRed } from './farolas.fixture';
+import { farolasDeLaSemilla, simularApiFarolas, simularApiIncidencias, teselasSinRed } from './farolas.fixture';
 
 // Mapa de farolas en solo lectura (specs/004-mapa-farolas).
 
 test.beforeEach(async ({ page }) => {
   await teselasSinRed(page);
+  await simularApiIncidencias(page);
 });
 
 test('muestra las 70 farolas sobre el mapa sin iniciar sesión (US1)', async ({ page }, testInfo) => {

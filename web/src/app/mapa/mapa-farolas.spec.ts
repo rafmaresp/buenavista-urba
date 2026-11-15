@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import { Sesion } from '../sesion';
 import { FarolaPublica } from './farolas-cliente';
-import { MapaFarolas, contenidoFicha } from './mapa-farolas';
+import { ErrorAviso, IncidenciaPublica } from './incidencias-cliente';
+import { Avisar, MapaFarolas, contenidoFicha } from './mapa-farolas';
 
 const FAROLAS: FarolaPublica[] = [
   { id: 'F01', calle: 'C. M (paralela A-8032)', lat: 37.3186864, lon: -5.961454 },
@@ -8,9 +10,16 @@ const FAROLAS: FarolaPublica[] = [
   { id: 'F03', calle: 'C. Ficticia', lat: 37.3181375, lon: -5.9620907 },
 ];
 
-async function montar(cargador: () => Promise<FarolaPublica[]>) {
+const INC_F02: IncidenciaPublica = { id: 'a1', farola: 'F02', estado: 'Nuevo', creada: '2026-11-15T19:30:00.000Z' };
+
+async function montar(
+  cargador: () => Promise<FarolaPublica[]>,
+  opciones: { incidencias?: () => Promise<IncidenciaPublica[]>; avisar?: Avisar } = {},
+) {
   const fixture = TestBed.createComponent(MapaFarolas);
   fixture.componentRef.setInput('cargador', cargador);
+  fixture.componentRef.setInput('cargadorIncidencias', opciones.incidencias ?? (async () => []));
+  if (opciones.avisar) fixture.componentRef.setInput('avisar', opciones.avisar);
   await fixture.whenStable();
   fixture.detectChanges();
   await fixture.whenStable();
@@ -74,6 +83,102 @@ describe('MapaFarolas', () => {
     const ficha = el.querySelector('.leaflet-popup-content .ficha');
     expect(ficha?.querySelector('h2')?.textContent).toBe('F03');
     expect(ficha?.querySelector('p')?.textContent).toBe('C. Ficticia');
+  });
+});
+
+async function esperar(fixture: { whenStable: () => Promise<unknown>; detectChanges: () => void }) {
+  await new Promise((r) => setTimeout(r, 0));
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+describe('MapaFarolas — incidencias (specs/006)', () => {
+  beforeEach(() => TestBed.configureTestingModule({ imports: [MapaFarolas] }));
+
+  function entrar() {
+    // Solo para mostrar el formulario: el rol lo decide la API en cada aviso.
+    TestBed.inject(Sesion).rol.set('comunero');
+  }
+
+  it('marca las farolas con incidencia abierta y su ficha muestra estado y fecha (US3)', async () => {
+    const { el } = await montar(async () => FAROLAS, { incidencias: async () => [INC_F02] });
+    const marcadas = Array.from(el.querySelectorAll<HTMLElement>('.farola-marca--incidencia')).map((m) => m.title);
+    expect(marcadas).toEqual(['Farola F02']);
+
+    el.querySelector<HTMLElement>('[title="Farola F02"]')!.click();
+    const ficha = el.querySelector('.leaflet-popup-content .ficha')!;
+    expect(ficha.querySelector('.ficha__incidencia')?.textContent).toBe('Incidencia abierta: Nuevo, avisada el 15/11/2026');
+    expect(ficha.querySelector('form')).toBeNull();
+  });
+
+  it('si fallan las incidencias, las farolas se ven y hay un aviso (FR-010)', async () => {
+    const { el } = await montar(async () => FAROLAS, {
+      incidencias: async () => Promise.reject(new Error('500')),
+    });
+    expect(el.querySelectorAll('.farola-marca')).toHaveLength(3);
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('No se pudieron cargar las incidencias');
+  });
+
+  it('sin sesión, la ficha invita a entrar y no muestra el formulario (US1)', async () => {
+    const { el } = await montar(async () => FAROLAS);
+    el.querySelector<HTMLElement>('[title="Farola F01"]')!.click();
+    const enlace = el.querySelector<HTMLAnchorElement>('.leaflet-popup-content .ficha__entrar');
+    expect(enlace?.getAttribute('href')).toBe('/login');
+    expect(el.querySelector('.leaflet-popup-content form')).toBeNull();
+  });
+
+  it('con sesión avisa con el comentario y marca la farola sin recargar (US1, FR-009)', async () => {
+    entrar();
+    const avisos: [string, string][] = [];
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      avisar: async (farola, comentario) => {
+        avisos.push([farola, comentario]);
+        return { id: 'n1', farola, estado: 'Nuevo', creada: '2026-11-15T19:30:00.000Z' };
+      },
+    });
+    el.querySelector<HTMLElement>('[title="Farola F01"]')!.click();
+    const form = el.querySelector<HTMLFormElement>('.leaflet-popup-content form')!;
+    expect(form.textContent).toContain('No escribas nombres ni datos de otras personas.');
+    const texto = form.querySelector('textarea')!;
+    expect(texto.maxLength).toBe(280);
+    texto.value = 'Parpadea';
+    texto.dispatchEvent(new Event('input'));
+    expect(form.querySelector('.ficha__contador')?.textContent).toBe('8/280');
+
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+
+    expect(avisos).toEqual([['F01', 'Parpadea']]);
+    expect(el.querySelector('[title="Farola F01"]')!.classList).toContain('farola-marca--incidencia');
+    expect(el.querySelector('.leaflet-popup-content .ficha__incidencia')?.textContent).toContain('Incidencia abierta: Nuevo');
+  });
+
+  it('si el aviso falla muestra el error y deja reintentar', async () => {
+    entrar();
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      avisar: async () => Promise.reject(new ErrorAviso('sin-sesion')),
+    });
+    el.querySelector<HTMLElement>('[title="Farola F01"]')!.click();
+    const form = el.querySelector<HTMLFormElement>('.leaflet-popup-content form')!;
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+
+    const error = form.querySelector<HTMLElement>('.ficha__error')!;
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toContain('Vuelve a entrar');
+    expect(form.querySelector('button')!.disabled).toBe(false);
+    expect(el.querySelector('.farola-marca--incidencia')).toBeNull();
+  });
+
+  it('un error que no es de sesión pide reintentar', () => {
+    const ficha = contenidoFicha(FAROLAS[0]!, { dentro: true, avisar: async () => Promise.reject(new Error('x')) });
+    ficha.querySelector('form')!.dispatchEvent(new Event('submit'));
+    return new Promise<void>((r) =>
+      setTimeout(() => {
+        expect(ficha.querySelector('.ficha__error')?.textContent).toBe('No se pudo enviar el aviso. Inténtalo de nuevo.');
+        r();
+      }, 0),
+    );
   });
 });
 

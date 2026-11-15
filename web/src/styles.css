@@ -131,6 +131,11 @@ app-mapa-farolas {
   box-sizing: border-box;
 }
 
+/* Farola con una incidencia abierta: punto rojo, más visible que el amarillo sobre la ortofoto. */
+.farola-marca--incidencia {
+  background: #d32f2f;
+}
+
 .farola-marca__codigo {
   display: none;
   position: absolute;
@@ -155,4 +160,57 @@ app-mapa-farolas {
 
 .ficha p {
   margin: 0;
+}
+
+.ficha__incidencia {
+  margin-top: 6px !important;
+  color: #b71c1c;
+  font-weight: 600;
+}
+
+.ficha__aviso {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.ficha__etiqueta {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.ficha__comentario {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.ficha__nota {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.ficha__boton {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #d32f2f;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+}
+
+.ficha__boton:disabled {
+  opacity: 0.6;
+}
+
+.ficha__error {
+  color: #b71c1c;
+  font-size: 0.85rem;
+}
+
+.ficha__entrar {
+  display: inline-block;
+  margin-top: 6px;
 }

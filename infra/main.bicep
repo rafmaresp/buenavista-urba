@@ -87,6 +87,13 @@ resource tablaUsuarios 'Microsoft.Storage/storageAccounts/tableServices/tables@2
   name: 'Usuarios'
 }
 
+// Incidencias (spec 006-reportar-incidencia-farola): una partición por farola, con la fila candado
+// `abierta` que impide una segunda incidencia abierta.
+resource tablaIncidencias 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'Incidencias'
+}
+
 // Un SAS de servicio por tabla (decisión 2026-11-15, opción A): solo actúa sobre su tabla, no crea
 // ni borra tablas, solo HTTPS y caduca al año. La app solo lee Farolas (r) y solo añade y lee
 // Auditoria (ra): ni un fallo ni una credencial filtrada pueden modificar o borrar la auditoría.
@@ -121,6 +128,17 @@ var usuariosSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var usuariosSas = contains(usuariosSasToken, 'tn=') ? usuariosSasToken : '${usuariosSasToken}&tn=${tablaUsuarios.name}'
 
+// Incidencias: la app lee y da de alta; borrar solo para deshacer un alta cuya auditoría falló.
+// Sin actualizar hasta el cambio de gestión de estados.
+var incidenciasSasToken = storage.listServiceSas('2023-05-01', {
+  canonicalizedResource: '/table/${storage.name}/${toLower(tablaIncidencias.name)}'
+  signedPermission: 'rad'
+  signedProtocol: 'https'
+  signedExpiry: sasExpiry
+  keyToSign: sasKey
+}).serviceSasToken
+var incidenciasSas = contains(incidenciasSasToken, 'tn=') ? incidenciasSasToken : '${incidenciasSasToken}&tn=${tablaIncidencias.name}'
+
 // ---------- Static Web App Free ----------
 
 resource swa 'Microsoft.Web/staticSites@2023-12-01' = {
@@ -144,6 +162,7 @@ resource swaSettings 'Microsoft.Web/staticSites/config@2023-12-01' = {
     FAROLAS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${farolasSas}'
     AUDITORIA_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${auditoriaSas}'
     USUARIOS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${usuariosSas}'
+    INCIDENCIAS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${incidenciasSas}'
     GOOGLE_CLIENT_ID: googleClientId
   }
 }

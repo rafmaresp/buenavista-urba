@@ -12,4 +12,8 @@
       </div>
     }
   }
+
+  @if (estado() === 'ok' && errorIncidencias()) {
+    <p class="mapa__aviso mapa__aviso--error" role="alert">No se pudieron cargar las incidencias abiertas.</p>
+  }
 </section>
