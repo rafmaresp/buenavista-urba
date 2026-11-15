@@ -6,7 +6,7 @@
 
 - [x] 0.1 Elegir la suscripción y registrar los proveedores `Microsoft.Storage`, `Microsoft.Web`, `Microsoft.Logic`, `Microsoft.Insights`, `Microsoft.CostManagement`, `Microsoft.ManagedIdentity`
 - [x] 0.2 Crear el grupo `rg-buenavista-incidencias` en `westeurope`
-- [x] 0.3 Crear las identidades `id-buenavista-infra` e `id-buenavista-app` en ese grupo, con credencial federada para `repo:<owner>/buenavista-urba:environment:infra` y `...:environment:produccion`
+- [x] 0.3 Crear las identidades `id-buenavista-infra` e `id-buenavista-app` en ese grupo, con credencial federada para `repo:<owner>@<id>/buenavista-urba@<id>:environment:infra` (sujeto con IDs inmutables) y `...:environment:produccion`
 - [x] 0.4 Crear el rol personalizado `Buenavista corte de Storage` (solo `Microsoft.Storage/storageAccounts/read` y `/write`, asignable en el grupo) con el comando del README
 - [x] 0.5 Roles de `id-buenavista-infra`: `Contributor` y `Role Based Access Control Administrator` (condición: solo el rol de corte y `Contributor`) en el grupo
 - [ ] 0.6 (en curso) GitHub: entornos `infra` (revisor obligatorio: Rafa) y `produccion` (solo rama `main`); variables `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID_INFRA`, `AZURE_CLIENT_ID_APP`; secreto de entorno `AVISOS_EMAIL`

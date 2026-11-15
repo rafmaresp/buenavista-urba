@@ -4,13 +4,13 @@ Todo lo de Azure se declara en `main.bicep` y se despliega con el workflow [`inf
 
 | Recurso | Nombre | Región | Coste esperado |
 |---|---|---|---|
-| Static Web App Free | `swa-buenavista` | `westeurope` (única región UE del plan Free) | 0 € |
+| Static Web App Free | `swa-buenavista` | `eastus2` **provisional** (ver abajo); destino `westeurope` | 0 € |
 | Cuenta de Storage (solo Table) | `stbuenavista…` | `spaincentral` | ≈ 0,01 €/mes (estimación) |
 | Logic App de corte (consumo) | `logic-buenavista-corte` | `spaincentral` | 0 € en reposo |
 | Grupo de acciones | `ag-buenavista-corte` | global | 0 € |
 | Presupuesto de 1 €/mes | `presupuesto-buenavista` | grupo de recursos | 0 € |
 
-`westeurope` no admite recursos nuevos en esta suscripción (`RequestDisallowedByAzure`), por eso Storage, la Logic App y las identidades van en `spaincentral`. El grupo de recursos sí está en `westeurope`: solo guarda metadatos.
+`westeurope` no admite recursos nuevos en esta suscripción (`RequestDisallowedByAzure`), por eso Storage, la Logic App y las identidades van en `spaincentral`. La SWA Free solo existe en `westeurope` dentro de la UE, así que va **provisionalmente en `eastus2`, sin datos reales**, hasta que Microsoft dé acceso a `westeurope` (decisión del 2026-11-15). Entonces: `az staticwebapp delete -n swa-buenavista -g rg-buenavista-incidencias --yes`, `swaLocation = 'westeurope'` en `main.bicepparam`, fusionar y desplegar. El grupo de recursos sí está en `westeurope`: solo guarda metadatos.
 
 ## Pasos únicos (ya hechos el 15-11-2026)
 
@@ -18,7 +18,9 @@ Desde Azure Cloud Shell en **Bash**:
 
 ```bash
 RG=rg-buenavista-incidencias
-REPO=rafmaresp/buenavista-urba
+# GitHub firma el token OIDC con el sujeto «repo:<owner>@<id>/<repo>@<id>:environment:<entorno>»
+# (identificadores inmutables). Lo muestra el error AADSTS700213 si no coincide.
+SUJ=repo:rafmaresp@34618721/buenavista-urba@1451594037
 LOC=spaincentral
 SCOPE=/subscriptions/<suscripción>/resourceGroups/$RG
 
@@ -28,8 +30,8 @@ az group create -n $RG -l westeurope
 
 # Identidades de GitHub (OIDC, sin secretos)
 for n in infra app; do az identity create -g $RG -n id-buenavista-$n -l $LOC -o none; done
-az identity federated-credential create -g $RG --identity-name id-buenavista-infra -n github-infra --issuer https://token.actions.githubusercontent.com --subject repo:$REPO:environment:infra --audiences api://AzureADTokenExchange
-az identity federated-credential create -g $RG --identity-name id-buenavista-app -n github-produccion --issuer https://token.actions.githubusercontent.com --subject repo:$REPO:environment:produccion --audiences api://AzureADTokenExchange
+az identity federated-credential create -g $RG --identity-name id-buenavista-infra -n github-infra --issuer https://token.actions.githubusercontent.com --subject $SUJ:environment:infra --audiences api://AzureADTokenExchange
+az identity federated-credential create -g $RG --identity-name id-buenavista-app -n github-produccion --issuer https://token.actions.githubusercontent.com --subject $SUJ:environment:produccion --audiences api://AzureADTokenExchange
 
 # Rol de corte: solo leer y modificar la cuenta (ni claves ni datos)
 cat > rol-corte.json <<JSON

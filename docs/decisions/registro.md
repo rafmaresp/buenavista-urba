@@ -250,3 +250,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **What:** La cuenta de Storage, la Logic App de corte y las identidades de GitHub van en `spaincentral`. La Static Web App Free sigue en `westeurope`, la única región UE del plan Free. El grupo de recursos `rg-buenavista-incidencias` queda en `westeurope` (solo guarda metadatos). La región es un parámetro de `infra/main.bicep`.
 **Why:** La suscripción nueva de pago por uso no admite recursos nuevos en `westeurope` (`RequestDisallowedByAzure`, "region not accepting new customers"). `spaincentral` es UE, así que no cambia nada del RGPD.
 - Riesgo abierto: si Azure también rechaza la SWA en `westeurope`, se verá en el primer `what-if` o despliegue y Rafa decidirá la alternativa.
+
+### 2026-11-15: SWA provisional en `eastus2` para probar CI/CD
+
+**By:** Rafa
+**What:** Azure tampoco admite la Static Web App en `westeurope` en esta suscripción (`RequestDisallowedByAzure`), y el plan Free no existe en otra región de la UE. Para probar ya la integración y el despliegue continuo, la SWA se despliega **provisionalmente en `eastus2`** (`swaLocation` en `infra/main.bicepparam`). Los datos siguen en `spaincentral`. A la vez, Rafa pide a Microsoft acceso a `westeurope`.
+**Why:** Rafa necesita probar la CI/CD ahora y la petición de acceso puede tardar días.
+- **Sin datos reales ni vecinos** mientras la SWA esté en `eastus2`: las Functions gestionadas tratarían datos personales fuera de la UE, en contra de la constitución y de `docs/rgpd/`.
+- Al tener acceso a `westeurope`: borrar la SWA, volver `swaLocation` a `westeurope` y desplegar. La región de una SWA no se puede cambiar, así que se recrea y la URL cambia.
