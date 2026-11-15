@@ -97,7 +97,7 @@ Cualquiera que llegue a la pantalla de entrada ve la cláusula informativa (capa
 - **FR-009**: El rol MUST leerse de la lista en cada petición; nada de lo que envía el cliente lo determina.
 - **FR-010**: Toda operación no pública MUST pasar por un único punto de comprobación de identidad y rol.
 - **FR-011**: Los registros, errores y respuestas MUST NOT contener correos, identificadores de Google ni identidades.
-- **FR-012**: El sistema MUST limitar las peticiones por usuario a 60 por minuto en las operaciones no públicas y responder 429 al superarlo.
+- **FR-012**: El sistema MUST limitar las peticiones a 60 por minuto por cuenta de Google en las operaciones no públicas, antes de consultar la lista, y responder 429 al superarlo.
 - **FR-013**: "Quién soy" MUST devolver solo el rol del usuario.
 - **FR-014**: La lista MUST guardar solo uid aleatorio, correo normalizado, identificador de Google, rol, estado y fechas de alta y baja.
 - **FR-015**: La web MUST mostrar al usuario si ha entrado y su rol, y permitirle salir (olvidar la identidad en memoria).

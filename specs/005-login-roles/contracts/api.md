@@ -8,7 +8,7 @@ Errores comunes (cuerpo JSON, `Cache-Control: no-store`):
 |---|---|---|
 | 401 | `{ "error": "no-autenticado" }` | Sin cabecera, token inválido, caducado, de otro emisor o audiencia |
 | 403 | `{ "error": "sin-acceso" }` | Email sin verificar, fuera de la lista, estado ≠ activo, `sub` distinto del vinculado, email duplicado |
-| 429 | `{ "error": "demasiadas-peticiones" }` + `Retry-After` | > 60 peticiones/min del mismo uid |
+| 429 | `{ "error": "demasiadas-peticiones" }` + `Retry-After` | > 60 peticiones/min de la misma cuenta de Google |
 | 503 | `{ "error": "no-disponible" }` | Falta `GOOGLE_CLIENT_ID`, tabla caída |
 
 ## GET /api/yo

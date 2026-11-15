@@ -6,7 +6,7 @@
 
 ## Summary
 
-Lista cerrada en una tabla nueva `Usuarios` y un único guardián de identidad en la API (`identificar()`), que valida en cada petición el ID token de Google con `google-auth-library`, busca al usuario por `sub` o, la primera vez, por email verificado (y vincula el `sub` mediante `RepositorioUsuarios`, que audita y deshace si la auditoría falla), exige `estado = activo`, aplica un límite de 60 peticiones/minuto por uid y devuelve `{ uid, rol }`. Endpoints nuevos: `GET /api/yo` (rol) y `GET /api/config` (client ID público). En la web, rutas `/login` (cláusula de capa 1 + botón GIS cargado solo ahí) y `/privacidad`, y un servicio de sesión que guarda el token en memoria y lo envía en la cabecera `X-Id-Token`.
+Lista cerrada en una tabla nueva `Usuarios` y un único guardián de identidad en la API (`identificar()`), que valida en cada petición el ID token de Google con `google-auth-library`, busca al usuario por `sub` o, la primera vez, por email verificado (y vincula el `sub` mediante `RepositorioUsuarios`, que audita y deshace si la auditoría falla), exige `estado = activo`, aplica un límite de 60 peticiones/minuto por cuenta de Google (antes de leer la tabla) y devuelve `{ uid, rol }`. Endpoints nuevos: `GET /api/yo` (rol) y `GET /api/config` (client ID público). En la web, rutas `/login` (cláusula de capa 1 + botón GIS cargado solo ahí) y `/privacidad`, y un servicio de sesión que guarda el token en memoria y lo envía en la cabecera `X-Id-Token`.
 
 ## Technical Context
 

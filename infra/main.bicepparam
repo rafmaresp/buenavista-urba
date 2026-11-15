@@ -7,3 +7,5 @@ param swaLocation = 'eastus2'
 param presupuestoInicio = '2026-11-01'
 param avisosEmail = readEnvironmentVariable('AVISOS_EMAIL')
 param corteRoleId = readEnvironmentVariable('CORTE_ROLE_ID')
+// Público (no es secreto). Lo crea Rafa en Google Cloud (infra/README.md); vacío = login no disponible.
+param googleClientId = ''

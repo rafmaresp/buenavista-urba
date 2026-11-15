@@ -25,7 +25,7 @@
 - **SAS**: `Usuarios` con `ru` (leer y actualizar). Altas y bajas (cambio siguiente) irán con la identidad de infra, no con la app.
 
 ## 6. Límite de peticiones
-- **Decision**: ventana fija de 60 s, 60 peticiones por uid, en memoria de la instancia; 429 con `Retry-After`.
+- **Decision**: ventana fija de 60 s, 60 peticiones por cuenta de Google (hash del `sub`), en memoria de la instancia, comprobado antes de leer `Usuarios`; 429 con `Retry-After`. Así también frena a una cuenta válida fuera de la lista que repite peticiones (cada una costaría lecturas).
 - **Alternatives**: contador en Table Storage (una escritura por petición: más coste que lo que protege).
 
 ## 7. Client ID de Google

@@ -1,4 +1,11 @@
 <main>
   <h1>{{ title() }}</h1>
-  <p>En construcción</p>
+  <nav class="sesion">
+    @if (sesion.dentro()) {
+      <span>{{ sesion.rol() }}</span> · <button type="button" (click)="sesion.salir()">Salir</button>
+    } @else {
+      <a routerLink="/login">Entrar</a>
+    }
+  </nav>
+  <router-outlet />
 </main>

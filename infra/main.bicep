@@ -33,6 +33,9 @@ param sasExpiry string = dateTimeAdd(utcNow(), 'P1Y')
 ])
 param sasKey string = 'key1'
 
+@description('Client ID del cliente OAuth de Google (público: aparece en la página de login). Vacío = login no disponible.')
+param googleClientId string = ''
+
 @description('Importe mensual del presupuesto, en la moneda de facturación (euros).')
 param presupuestoImporte int = 1
 
@@ -78,6 +81,12 @@ resource tablaAuditoria 'Microsoft.Storage/storageAccounts/tableServices/tables@
   name: 'Auditoria'
 }
 
+// Lista cerrada (spec 005-login-roles): uid, email, sub, rol, estado.
+resource tablaUsuarios 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'Usuarios'
+}
+
 // Un SAS de servicio por tabla (decisión 2026-11-15, opción A): solo actúa sobre su tabla, no crea
 // ni borra tablas, solo HTTPS y caduca al año. La app solo lee Farolas (r) y solo añade y lee
 // Auditoria (ra): ni un fallo ni una credencial filtrada pueden modificar o borrar la auditoría.
@@ -102,6 +111,16 @@ var auditoriaSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var auditoriaSas = contains(auditoriaSasToken, 'tn=') ? auditoriaSasToken : '${auditoriaSasToken}&tn=${tablaAuditoria.name}'
 
+// Usuarios: la app lee y actualiza (fija el sub en el primer login); no da de alta ni borra usuarios.
+var usuariosSasToken = storage.listServiceSas('2023-05-01', {
+  canonicalizedResource: '/table/${storage.name}/${toLower(tablaUsuarios.name)}'
+  signedPermission: 'ru'
+  signedProtocol: 'https'
+  signedExpiry: sasExpiry
+  keyToSign: sasKey
+}).serviceSasToken
+var usuariosSas = contains(usuariosSasToken, 'tn=') ? usuariosSasToken : '${usuariosSasToken}&tn=${tablaUsuarios.name}'
+
 // ---------- Static Web App Free ----------
 
 resource swa 'Microsoft.Web/staticSites@2023-12-01' = {
@@ -124,6 +143,8 @@ resource swaSettings 'Microsoft.Web/staticSites/config@2023-12-01' = {
   properties: {
     FAROLAS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${farolasSas}'
     AUDITORIA_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${auditoriaSas}'
+    USUARIOS_CONNECTION: 'TableEndpoint=${tableEndpoint};SharedAccessSignature=${usuariosSas}'
+    GOOGLE_CLIENT_ID: googleClientId
   }
 }
 

@@ -296,3 +296,9 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "No quiero estar autorizando subidas, te pido algo y tú lo haces" y "lo único que necesito es que si se va a cambiar infra de Azure, yo lo acepte" (Rafa). Claude no puede lanzar workflows (la integración no tiene permiso de dispatch), así que el disparador es la fusión.
 - La carga va en el mismo job que el Bicep porque usa la identidad de infra: así es una sola aprobación. Un cambio solo en `data/` también la pide, porque escribe en Azure con esa identidad.
 - Tras un corte por presupuesto, el despliegue automático no reactiva Storage: falla y avisa; solo se reactiva lanzando a mano "Desplegar infraestructura (Bicep)" (se mantiene "se reactiva a mano" del 2026-11-12).
+
+### 2026-11-15: Login con lista cerrada en `Usuarios` y token en `X-Id-Token`
+
+**By:** Rafa
+**What:** En el cambio 4 (`login-roles`, `specs/005-login-roles/`) entra solo quien está en la tabla `Usuarios` (lista cerrada, roles `comunero` y `directiva`), como dice `docs/producto.md`. Se descarta "cualquier cuenta de Google es vecino y los admin van en una lista de correos en configuración", que aparecía en el resumen aprobado en el chat. No hay sesión propia en el servidor: la web guarda el ID token de Google en memoria y lo manda en la cabecera `X-Id-Token`, y cada Function no pública lo valida. Alta, baja y supresión de usuarios, el registro de actividades y la nota de umbral de la EIPD pasan a un cambio siguiente. Los usuarios de prueba del e2e llegan con el cambio 5.
+**Why:** Rafa eligió la lista cerrada en el hilo del login. Con ella nadie ajeno a la urbanización puede escribir, y es lo que pide la propuesta RGPD. `X-Id-Token` en lugar de `Authorization` porque hay informes de que SWA sustituye esa cabecera hacia la API gestionada.
