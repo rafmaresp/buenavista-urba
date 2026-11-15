@@ -1,5 +1,7 @@
 name: CI
 
+# Un solo workflow para cada PR y push a main. Los nombres de los cuatro primeros jobs son los
+# checks obligatorios del ruleset "Main": no se renombran sin actualizar el ruleset.
 on:
   pull_request:
   push:
@@ -13,37 +15,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
+  secrets:
+    name: Secrets (TruffleHog)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "^22.22.3"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
+          fetch-depth: 0
+      - name: TruffleHog (los secretos verificados rompen el build)
+        run: docker run --rm -v "$PWD:/repo" trufflesecurity/trufflehog:latest git file:///repo --only-verified --fail --no-update
 
-  api:
+  vulnerabilities:
+    name: Vulnerabilities (Trivy)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Trivy filesystem scan (CRITICAL/HIGH)
+        run: docker run --rm -v "$PWD:/repo" aquasec/trivy:latest fs --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 /repo
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Semgrep
+        run: docker run --rm -v "$PWD:/src" semgrep/semgrep:latest semgrep scan --config p/default --error --metrics off /src
+
+  # Build y tests de web/ y api/ (la API contra Azurite), con cobertura de líneas.
+  # El umbral está en quality.config.json (coverage.lines) y solo sube.
+  tests:
+    name: Tests & coverage floor
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "^22.22.3"
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            api/package-lock.json
       # Azurite (emulador de Azure Storage) para la integración con Table Storage.
       - name: Arrancar Azurite (Table)
-        working-directory: .
         run: |
           # Cuenta con clave aleatoria en cada ejecución: ninguna clave en el repo. La prueba del SAS
           # de producción (solo entidades) necesita el nombre y la clave para firmarlo.
@@ -63,11 +76,30 @@ jobs:
           done
           docker logs azurite
           exit 1
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
+      - name: web (build y tests)
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          npm test -- --coverage --coverage-reporters=lcov --coverage-reporters=text-summary
+      - name: api (build y tests contra Azurite)
+        working-directory: api
         env:
           REQUIRE_AZURITE: "1"
+        run: |
+          npm ci
+          npm run build
+          npm test -- --coverage
+      - name: Umbral de cobertura (quality.config.json)
+        run: node .github/scripts/pc-coverage-floor.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: cobertura
+          path: |
+            web/coverage/
+            api/coverage/
+          if-no-files-found: ignore
 
   # e2e con Playwright contra la CLI de SWA (web + API como en producción).
   # No es un check obligatorio del ruleset; capturas e informe como artefacto.

@@ -33,6 +33,10 @@ __queuestorage__/
 # API build
 api/dist/
 
+# Cobertura (CI)
+web/coverage/
+api/coverage/
+
 # e2e (Playwright)
 e2e/test-results/
 e2e/playwright-report/
