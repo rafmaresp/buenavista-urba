@@ -304,3 +304,8 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "Los e2e no se hacen sobre el entorno real? no se verifica nunca que siga funcionando?" y "verificar lo más tontorrón de momento, el health por ejemplo" (Rafa). Los e2e de la CI usan la CLI de SWA y un emulador, así que no detectan un fallo de despliegue en Azure.
 - Limitación: `/api/health` no toca Storage, así que no detecta un SAS roto. Cuando haga falta, se amplía (por ejemplo, `/api/farolas` con 70 farolas) o se añaden e2e de solo lectura contra producción.
 - Los cambios solo de documentación (`*.md`) bajo `infra/` no cuentan como cambio de infraestructura: ni el what-if del PR ni el despliegue piden aprobación.
+### 2026-11-15: Login con lista cerrada en `Usuarios` y token en `X-Id-Token`
+
+**By:** Rafa
+**What:** En el cambio 4 (`login-roles`, `specs/005-login-roles/`) entra solo quien está en la tabla `Usuarios` (lista cerrada, roles `comunero` y `directiva`), como dice `docs/producto.md`. Se descarta "cualquier cuenta de Google es vecino y los admin van en una lista de correos en configuración", que aparecía en el resumen aprobado en el chat. No hay sesión propia en el servidor: la web guarda el ID token de Google en memoria y lo manda en la cabecera `X-Id-Token`, y cada Function no pública lo valida. Alta, baja y supresión de usuarios, el registro de actividades y la nota de umbral de la EIPD pasan a un cambio siguiente. Los usuarios de prueba del e2e llegan con el cambio 5.
+**Why:** Rafa eligió la lista cerrada en el hilo del login. Con ella nadie ajeno a la urbanización puede escribir, y es lo que pide la propuesta RGPD. `X-Id-Token` en lugar de `Authorization` porque hay informes de que SWA sustituye esa cabecera hacia la API gestionada.

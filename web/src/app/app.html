@@ -1,4 +1,11 @@
 <header class="cabecera">
   <h1>{{ title() }}</h1>
+  <nav class="sesion">
+    @if (sesion.dentro()) {
+      <span>{{ sesion.rol() }}</span> · <button type="button" (click)="sesion.salir()">Salir</button>
+    } @else {
+      <a routerLink="/login">Entrar</a>
+    }
+  </nav>
 </header>
-<app-mapa-farolas />
+<router-outlet />

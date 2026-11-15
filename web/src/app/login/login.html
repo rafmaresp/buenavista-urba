@@ -1,0 +1,38 @@
+<section class="login">
+  <h2>Entrar</h2>
+
+  <!-- Capa 1 de la cláusula informativa (docs/rgpd/propuesta-rgpd-v1.md sec. 5), antes del botón. -->
+  <div class="clausula" data-testid="clausula">
+    <p><strong>Información sobre protección de datos</strong> (texto provisional, pendiente de validar).</p>
+    <p>
+      Responsable: Comunidad de Propietarios Buenavista I. Finalidad: gestionar los avisos de farolas y otras
+      incidencias y avisarte por correo de los cambios en las tuyas. Datos: tu correo, tu identificador de Google,
+      tus incidencias, comentarios y votos, y un registro de las acciones realizadas. Base: interés legítimo de la
+      comunidad en el mantenimiento de las zonas comunes y la seguridad del servicio. La directiva ve quién crea cada
+      incidencia; los demás vecinos no. Conservación: mientras seas comunero; después, hasta 12 meses las incidencias
+      y hasta 3 años el registro de acciones, sin identificarte tras tu baja. Destinatarios: Microsoft Azure, Google
+      (inicio de sesión) y el proveedor de correo (pendiente). Derechos: acceso, rectificación, supresión, oposición,
+      limitación y portabilidad en el correo de la comunidad (pendiente); reclamación ante la AEPD.
+      Al pulsar el botón, Google recibe tu dirección IP.
+    </p>
+    <p><a routerLink="/privacidad">Política de privacidad completa</a></p>
+  </div>
+
+  <!-- Fuera del @if: GIS pinta el botón una sola vez y tiene que seguir ahí al salir. -->
+  <div #boton data-testid="boton-google" [hidden]="sesion.dentro()"></div>
+  @if (sesion.dentro()) {
+    <p role="status">Has entrado como {{ sesion.rol() }}. <a routerLink="/">Ir al inicio</a></p>
+  } @else {
+    @switch (estado()) {
+      @case ('cargando') {
+        <p role="status">Cargando…</p>
+      }
+      @case ('sin-acceso') {
+        <p role="alert">No tienes acceso. Si eres comunero, pide a la directiva que te den de alta.</p>
+      }
+      @case ('no-disponible') {
+        <p role="alert">El inicio de sesión no está disponible ahora mismo. Prueba más tarde.</p>
+      }
+    }
+  }
+</section>

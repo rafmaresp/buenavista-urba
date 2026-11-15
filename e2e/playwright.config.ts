@@ -21,7 +21,9 @@ export default defineConfig({
     { name: 'movil', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'swa start ../web/dist/web/browser --api-location ../api --port 4280',
+    // --swa-config-location: sin él la CLI busca staticwebapp.config.json en e2e/ y no aplica ni el
+    // navigationFallback (rutas como /login dan 404) ni las cabeceras (CSP) de producción.
+    command: 'swa start ../web/dist/web/browser --api-location ../api --swa-config-location ../web/public --port 4280',
     url: 'http://localhost:4280/api/health',
     timeout: 180_000,
     reuseExistingServer: !process.env.CI,

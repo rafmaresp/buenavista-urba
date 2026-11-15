@@ -23,6 +23,10 @@ app-root {
 
 .cabecera {
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 12px;
   background: var(--azul);
   color: #fff;
@@ -31,6 +35,38 @@ app-root {
 .cabecera h1 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+/* Sesión en la cabecera (spec 005-login-roles). */
+.sesion,
+.sesion a,
+.sesion button {
+  color: #fff;
+  font: inherit;
+}
+
+.sesion button {
+  background: none;
+  border: 1px solid #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* La ruta '' solo envuelve al mapa: que no rompa el flex de app-root. */
+app-inicio {
+  display: contents;
+}
+
+/* Páginas de texto (login y privacidad): ocupan el resto y hacen scroll. */
+app-login,
+app-privacidad {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: block;
+  padding: 12px 16px;
+  max-width: 720px;
 }
 
 /* Mapa a pantalla completa (móvil primero). */

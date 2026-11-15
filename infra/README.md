@@ -103,6 +103,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
   |---|---|---|---|
   | `FAROLAS_CONNECTION` | `Farolas` | `r` (consultar) | La app solo lee el catálogo; el cambio 8 añadirá añadir y actualizar |
   | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
+  | `USUARIOS_CONNECTION` | `Usuarios` | `ru` (consultar y actualizar) | La app solo fija el `sub` en el primer login; altas y bajas no van por la app |
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
 - **Caducan un año después de cada despliegue de infraestructura.** Si en un año no cambia la infra, la API pierde el acceso: lanza **Desplegar infraestructura (Bicep)** a mano antes.
@@ -111,8 +112,19 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
 
 ### Rotar claves (si el SAS se filtra)
 
-Los SAS de tabla (`FAROLAS_CONNECTION` y `AUDITORIA_CONNECTION`) no usan política de acceso almacenada, así que solo se revocan regenerando la clave que los firma:
+Los SAS de tabla (`FAROLAS_CONNECTION`, `AUDITORIA_CONNECTION` y `USUARIOS_CONNECTION`) no usan política de acceso almacenada, así que solo se revocan regenerando la clave que los firma:
 
 1. Regenera la clave que **no** firma (`key2`): `az storage account keys renew -g rg-buenavista-incidencias -n <cuenta> --key key2`.
-2. Cambia `sasKey` a `'key2'` en `main.bicepparam`, fusiona y despliega: la app pasa a dos SAS de tabla firmados con `key2`.
+2. Cambia `sasKey` a `'key2'` en `main.bicepparam`, fusiona y despliega: la app pasa a los SAS de tabla firmados con `key2`.
 3. Regenera `key1`: el SAS filtrado deja de valer.
+
+## Login con Google (cliente OAuth)
+
+El login (spec `005-login-roles`) necesita un cliente OAuth de Google, gratuito. Lo crea Rafa una vez:
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → crea un proyecto (p. ej. `buenavista-incidencias`).
+2. **Google Auth Platform → Branding / Audience**: tipo **External**, estado **Testing**, y añade como *test users* las cuentas que vayan a probar. Mientras esté en Testing solo entran esas cuentas, que es lo que queremos con la SWA provisional fuera de la UE.
+3. **Clients → Create client → Web application**. *Authorized JavaScript origins*: la URL de la SWA (`https://<swa>.azurestaticapps.net`) y `http://localhost:4280`. Sin *redirect URIs*.
+4. Copia el **Client ID** (`….apps.googleusercontent.com`; no es secreto, aparece en la página) en `param googleClientId` de `main.bicepparam`, fusiona y aprueba el despliegue de infra.
+
+Sin `googleClientId`, `/login` dice que el inicio de sesión no está disponible y las Functions no públicas responden 503 a peticiones con token.
