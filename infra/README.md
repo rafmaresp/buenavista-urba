@@ -74,6 +74,8 @@ Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage e
 
 Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
 
+**Ojo:** el presupuesto avisa una sola vez por umbral y mes. Si reactivas Storage en el mismo mes del corte, no habrá otro corte automático hasta el mes siguiente: vigila el gasto a mano o sube el importe con `presupuestoImporte` si el gasto es legítimo.
+
 ### Probar el corte (una vez, tras el primer despliegue)
 
 La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSchema`, `monitoringService = CostAlerts`, `AlertCategory = budgets` y `ThresholdType = Actual`, como la muestra oficial *Cost budget alert*.

@@ -23,7 +23,7 @@
 - [x] 2.3 Logic App de consumo + asignación del rol de corte, grupo de acciones, presupuesto de 1 € con 4 notificaciones (corte solo en `Actual` 100)
 - [ ] 2.4 **Verificar** que `@azure/data-tables` conecta con la cadena `TableEndpoint=…;SharedAccessSignature=…` desde una Function gestionada y desde Azurite, y que el SAS no puede crear ni borrar tablas (Azurite: `api/src/tables.integration.test.ts`, salvo consultar entidades, que Azurite 3.35 rechaza con `srt=o` aunque Azure lo admite; Function gestionada y consulta: pendiente del primer despliegue)
 - [ ] 2.5 **Verificar** que el rol de corte basta para el `PATCH` de `publicNetworkAccess` y no permite `listKeys`, las tarifas vigentes en euros de Table Storage, Logic Apps y grupo de acciones, y si Storage factura las peticiones que rechaza con `publicNetworkAccess: Disabled`
-- [ ] 2.6 `bicep build` y `bicep lint` sin avisos en la CI
+- [x] 2.6 `bicep build` y `bicep lint` sin avisos en la CI
 
 ## 3. Workflows
 
@@ -40,4 +40,4 @@
 
 - [x] 5.1 `infra/README.md`: pasos únicos (con el comando del rol personalizado), deploy, reactivación tras un corte, caducidad y renovación del SAS, rotación de claves (regenerar la clave que no firma, desplegar firmando con ella, regenerar la otra) y cómo añadir una tabla (Bicep, deploy de infra antes que la app)
 - [x] 5.2 `README.md`: enlace a `infra/README.md`; quitar la creación manual de SWA y del secreto
-- [ ] 5.3 Revisión con `revisar-seguridad` (región UE, sin datos personales en el repo, alcance del SAS)
+- [x] 5.3 Revisión con `revisar-seguridad` (región UE, sin datos personales en el repo, alcance del SAS)
