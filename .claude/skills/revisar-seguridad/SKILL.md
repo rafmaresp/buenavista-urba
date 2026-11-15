@@ -34,7 +34,7 @@ Referencias: principios II, III y IV de `.specify/memory/constitution.md`, roles
 - Datos mínimos: no añadas campos personales que la spec no pida.
 - Nada de email, `sub`, tokens, cabecera `Authorization`, nombre ni cuerpos de petición en logs (`context.log`, `console.*`), errores devueltos, auditoría, fixtures, tests ni commits. Usa emails de ejemplo con dominio `example.com` solo si son inevitables.
 - La auditoría guarda `actor` = `uid`, `sistema:*` o `dev:<alias>`. El texto del comentario se audita como `{presente, longitud}`.
-- Cada escritura genera su entrada de auditoría en la misma operación; si la auditoría falla, la escritura no se hace.
+- Cada escritura pasa por el repositorio de su tabla (p. ej. `RepositorioFarolas`), que audita como efecto de la operación y deshace el cambio si la auditoría falla. Una Function o script que escribe en una tabla con `TableClient` directamente, o que llama a `auditar()` por su cuenta, es un fallo.
 
 ## 5. Entrada y escrituras
 

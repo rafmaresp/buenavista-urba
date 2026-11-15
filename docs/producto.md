@@ -12,7 +12,7 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 |---|---|---|
 | **Visitante** | Cualquiera, sin iniciar sesión | Ver el mapa de farolas y las incidencias abiertas (farola, estado, fecha, votos; sin autor ni comentario). Nada más |
 | **Comunero** | Email en la lista cerrada con rol comunero | Lo del visitante, más: crear una incidencia sobre una farola (comentario opcional) y votar +1 en una incidencia abierta |
-| **Directiva** | Email en la lista cerrada con rol directiva | Lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas y reubicarlas |
+| **Directiva** | Email en la lista cerrada con rol directiva | Lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas, reubicarlas y crear farolas nuevas |
 | **Devs** | Equipo técnico (fuera de la app) | Cargar farolas y la lista cerrada a petición de Rafa; consultar la auditoría; atender supresiones |
 
 - **Mapa público en solo lectura**; **toda acción requiere login con Google y estar en la lista cerrada**.
@@ -47,8 +47,9 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 - Transiciones validadas en servidor. *Propuesta a confirmar*: solo hacia delante (se puede saltar estados) y no se reabre una Completada; si la farola vuelve a fallar, incidencia nueva.
 - Panel de gestión: todas las incidencias, filtro por estado, orden por votos y antigüedad. La directiva puede ocultar un comentario (auditado sin copiar el texto).
 
-### 5. Reubicar farola (directiva)
-- Mueve la posición y fija su precisión. Sin historial en la app (solo en la auditoría). La directiva **no** da de alta ni de baja farolas ni edita calles.
+### 5. Reubicar y crear farola (directiva)
+- Reubicar (`PUT /api/farolas/{id}`): mueve la posición y fija su precisión. Sin historial en la app (solo en la auditoría).
+- Crear (`POST /api/farolas`): da de alta una farola nueva (decisión de Rafa del 2026-11-15). La directiva **no** da de baja farolas ni edita calles.
 
 ### 6. Avisos por correo
 - Al **correo de la directiva** (buzón de la comunidad) al crearse una incidencia.
@@ -56,7 +57,7 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 - Contenido mínimo: farola, estado, enlace; sin comentario. El email se lee de `Usuarios` al enviar y no se copia a colas, incidencias ni auditoría. Un fallo de envío no bloquea la operación.
 
 ### 7. Auditoría de todo
-- Toda escritura genera una entrada: quién, qué, cuándo, antes y después. Append-only, en la misma operación; si no se puede auditar, no se escribe.
+- Toda escritura genera una entrada: quién, qué, cuándo, antes y después. Append-only y como efecto de la propia escritura: la hace el repositorio de cada tabla, y si la auditoría falla el cambio se deshace.
 - `actor` = `uid`, `sistema:*` o `dev:<alias>`. **Prohibido en antes/después**: email, `sub`, nombre y texto del comentario (se audita `{presente, longitud}`), con test.
 - Clave de partición = mes (`AAAA-MM`) para purgar por meses. La consultan los devs; no hay vista en la app.
 
@@ -77,14 +78,14 @@ Zonas de **maleza**, **incidencia libre** sobre las calles, **capa de redes** (s
 ## Fuera de alcance (explícito)
 
 - **WhatsApp en cualquier forma** (ni API ni `wa.me`).
-- Precisión de farolas visible para quien no sea directiva; hilo de comentarios; historial de posiciones en la app; alta/baja de farolas y edición de calles desde la app; reportar en un punto libre.
+- Precisión de farolas visible para quien no sea directiva; hilo de comentarios; historial de posiciones en la app; baja de farolas y edición de calles desde la app; reportar en un punto libre.
 - Previews de PR en la SWA.
 
 ## Datos de referencia
 
-- **Farolas**: la posición vigente vive en la tabla `Farolas`; `data/farolas_buenavista.csv` es la **semilla** (carga idempotente). Inventario: 70 farolas `F01`–`F70` sin huecos.
-- **F62**: sin coordenadas en ninguna fuente; se siembra **inferida** en el punto medio F61–F63 (37.3154785, −5.9617603, calle "C. H / C. Q (por confirmar)", ±20 m).
-- **Altas y bajas**: las pide Rafa y las cargan los devs, auditadas. **Calles**: no editables.
+- **Farolas**: la posición vigente vive en la tabla `Farolas`; `data/farolas_buenavista.csv` es la **semilla**. La carga (workflow "Cargar farolas") es como la siembra de una migración: solo da de alta las que faltan, nunca toca una existente y se puede relanzar sin efectos. Inventario: 70 farolas `F01`–`F70` sin huecos.
+- **F62**: una farola más en los datos (`estimada`, calle "C. H / C. Q"). Nota: ninguna fuente tenía sus coordenadas y se tomó el punto medio F61–F63 (37.3154785, −5.9617603), con un error real de hasta ±20 m.
+- **Altas y bajas**: altas con `POST /api/farolas` (directiva, cambio 8) o en la semilla; bajas, a petición de Rafa por los devs, auditadas. **Calles**: no editables.
 
 ## Estrategia de pruebas
 
@@ -109,4 +110,4 @@ Todas las pruebas corren en la CI; **sin previews de PR** por ahora.
 1. **Solicitudes de acceso**: ¿quién las aprueba, la directiva desde la app o los devs a petición de Rafa? Rai fija el plazo de conservación de las rechazadas. **Bloquea el cambio 4b.**
 2. **Preguntas RGPD de Rai para Rafa** (bloquean el cambio 4): quién firma como responsable y el encargo a Rafa y los devs; origen de la lista y si entran inquilinos; plazos 30 días / 12 meses / 3 años; visibilidad del comentario; qué ve la directiva del autor. Lo marcado VALIDAR, a revisar por un profesional.
 3. **Proveedor de correo** (lo más barato y sencillo, con DPA; Rai descarta Gmail personal). Destinatario: el correo de la directiva. Falta ver si ese buzón puede ser también el remitente (Gmail API) y si eso cumple el criterio de DPA. Opciones: ACS Email (de pago por uso, consultar), Brevo o Mailjet (UE, capa gratuita), Resend (EE. UU.). **Bloquea el cambio 9.**
-4. **Coordenadas reales de F62**: las toma Rafa en campo; corregirlas es una carga de los devs o una reubicación.
+4. **Coordenadas reales de F62**: las toma Rafa en campo; se corrigen con una reubicación (cambio 8), porque la carga no modifica farolas existentes.
