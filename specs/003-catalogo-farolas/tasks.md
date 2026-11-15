@@ -112,7 +112,7 @@ description: "Tareas del cambio 2: catálogo de farolas"
 - [X] T019 [P] `docs/producto.md`: F62 como farola normal (nota de que sus coordenadas son inferidas, ±20 m); reubicar (`PUT`) y crear (`POST`) farola por la directiva en el cambio 8
 - [X] T020 [P] `docs/roadmap.md`: cambio 2 con SAS por tabla y carga por workflow; cambio 8 ampliado con `POST /api/farolas`
 - [X] T021 [P] `docs/decisions/registro.md`: decisión del 2026-11-15 (opción A, carga como siembra solo de altas, F62 normal, `PUT`/`POST` en el cambio 8)
-- [ ] T022 Build y tests en `api/` y `web/`; revisión con `revisar-seguridad`
+- [X] T022 Build y tests en `api/` y `web/`; revisión con `revisar-seguridad`
 
 ---
 
