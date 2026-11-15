@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Sesion } from '../sesion';
 import { FarolaPublica } from './farolas-cliente';
-import { ErrorAviso, IncidenciaPublica } from './incidencias-cliente';
-import { Avisar, MapaFarolas, contenidoFicha } from './mapa-farolas';
+import { ErrorAviso, ErrorCambio, IncidenciaPublica } from './incidencias-cliente';
+import { Avisar, Cambiar, MapaFarolas, contenidoFicha } from './mapa-farolas';
 
 const FAROLAS: FarolaPublica[] = [
   { id: 'F01', calle: 'C. M (paralela A-8032)', lat: 37.3186864, lon: -5.961454 },
@@ -14,12 +14,13 @@ const INC_F02: IncidenciaPublica = { id: 'a1', farola: 'F02', estado: 'Nuevo', c
 
 async function montar(
   cargador: () => Promise<FarolaPublica[]>,
-  opciones: { incidencias?: () => Promise<IncidenciaPublica[]>; avisar?: Avisar } = {},
+  opciones: { incidencias?: () => Promise<IncidenciaPublica[]>; avisar?: Avisar; cambiar?: Cambiar } = {},
 ) {
   const fixture = TestBed.createComponent(MapaFarolas);
   fixture.componentRef.setInput('cargador', cargador);
   fixture.componentRef.setInput('cargadorIncidencias', opciones.incidencias ?? (async () => []));
   if (opciones.avisar) fixture.componentRef.setInput('avisar', opciones.avisar);
+  if (opciones.cambiar) fixture.componentRef.setInput('cambiar', opciones.cambiar);
   await fixture.whenStable();
   fixture.detectChanges();
   await fixture.whenStable();
@@ -188,5 +189,104 @@ describe('contenidoFicha', () => {
     expect(ficha.querySelector('h2')?.textContent).toBe('F09');
     expect(ficha.querySelector('p')?.textContent).toBe('<img src=x onerror=alert(1)>');
     expect(ficha.querySelector('img')).toBeNull();
+  });
+});
+
+describe('MapaFarolas — cambiar estado (specs/007)', () => {
+  beforeEach(() => TestBed.configureTestingModule({ imports: [MapaFarolas] }));
+
+  function comoRol(rol: 'comunero' | 'directiva') {
+    TestBed.inject(Sesion).rol.set(rol);
+  }
+
+  async function abrirF02(cambiar?: Cambiar, incidencia: IncidenciaPublica = INC_F02) {
+    const montaje = await montar(async () => FAROLAS, { incidencias: async () => [incidencia], cambiar });
+    montaje.el.querySelector<HTMLElement>('[title="Farola F02"]')!.click();
+    return montaje;
+  }
+
+  const ficha = (el: HTMLElement) => el.querySelector('.leaflet-popup-content .ficha')!;
+
+  it('la directiva ve un selector solo con los estados siguientes (US1, FR-007)', async () => {
+    comoRol('directiva');
+    const { el } = await abrirF02(undefined, { ...INC_F02, estado: 'Recibido' });
+    const opciones = Array.from(ficha(el).querySelectorAll('select option')).map((o) => o.textContent);
+    expect(opciones).toEqual(['Profesional notificado', 'Completado']);
+    expect(ficha(el).querySelector('.ficha__estado button')?.textContent).toBe('Guardar estado');
+  });
+
+  it('un comunero o sin sesión no ven selector (US3)', async () => {
+    const sinSesion = await abrirF02();
+    expect(ficha(sinSesion.el).querySelector('select')).toBeNull();
+    comoRol('comunero');
+    const comunero = await abrirF02();
+    expect(ficha(comunero.el).querySelector('select')).toBeNull();
+  });
+
+  it('guardar actualiza la ficha sin recargar (US1, FR-008)', async () => {
+    comoRol('directiva');
+    const llamadas: [string, string][] = [];
+    const { fixture, el } = await abrirF02(async (incidencia, estado) => {
+      llamadas.push([incidencia.id, estado]);
+      return { ...incidencia, estado };
+    });
+    const form = ficha(el).querySelector<HTMLFormElement>('.ficha__estado')!;
+    form.querySelector('select')!.value = 'Profesional notificado';
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+
+    expect(llamadas).toEqual([['a1', 'Profesional notificado']]);
+    expect(ficha(el).querySelector('.ficha__incidencia')?.textContent).toContain('Incidencia abierta: Profesional notificado');
+    expect(Array.from(ficha(el).querySelectorAll('select option')).map((o) => o.textContent)).toEqual(['Completado']);
+    expect(el.querySelector('[title="Farola F02"]')!.classList).toContain('farola-marca--incidencia');
+  });
+
+  it('completar libera la farola: marca normal y la ficha vuelve a ofrecer avisar (US2)', async () => {
+    comoRol('directiva');
+    const { fixture, el } = await abrirF02(async (incidencia, estado) => ({ ...incidencia, estado }));
+    const form = ficha(el).querySelector<HTMLFormElement>('.ficha__estado')!;
+    form.querySelector('select')!.value = 'Completado';
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+
+    expect(el.querySelector('.farola-marca--incidencia')).toBeNull();
+    expect(ficha(el).querySelector('.ficha__incidencia')).toBeNull();
+    expect(ficha(el).querySelector('.ficha__aviso')).not.toBeNull();
+  });
+
+  it('si otro cambio ganó, muestra el estado actual con un aviso', async () => {
+    comoRol('directiva');
+    const { fixture, el } = await abrirF02(async () =>
+      Promise.reject(new ErrorCambio('ha-cambiado', { ...INC_F02, estado: 'Profesional notificado' })),
+    );
+    ficha(el).querySelector<HTMLFormElement>('.ficha__estado button')!.click();
+    await esperar(fixture);
+
+    expect(ficha(el).querySelector('[role="alert"]')?.textContent).toContain('La incidencia había cambiado');
+    expect(ficha(el).querySelector('.ficha__incidencia')?.textContent).toContain('Profesional notificado');
+  });
+
+  it('si falla por sesión o servicio, muestra el error y deja reintentar (FR-009)', async () => {
+    comoRol('directiva');
+    let motivo: 'sin-sesion' | 'no-disponible' = 'sin-sesion';
+    const { fixture, el } = await abrirF02(async () => Promise.reject(new ErrorCambio(motivo)));
+    const form = ficha(el).querySelector<HTMLFormElement>('.ficha__estado')!;
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+    const error = form.querySelector<HTMLElement>('.ficha__error')!;
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toContain('Vuelve a entrar');
+    expect(form.querySelector('button')!.disabled).toBe(false);
+
+    motivo = 'no-disponible';
+    form.querySelector('button')!.click();
+    await esperar(fixture);
+    expect(error.textContent).toBe('No se pudo cambiar el estado. Inténtalo de nuevo.');
+    expect(ficha(el).querySelector('.ficha__incidencia')?.textContent).toContain('Nuevo');
+  });
+
+  it('una incidencia Completado no ofrece selector', () => {
+    const f = contenidoFicha(FAROLAS[1]!, { dentro: true, incidencia: { ...INC_F02, estado: 'Completado' }, cambiarEstado: async () => undefined });
+    expect(f.querySelector('select')).toBeNull();
   });
 });

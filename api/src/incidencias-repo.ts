@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { type ClienteAuditoria, auditar, entidadDeAuditoria } from './auditoria';
-import { ESTADO_COMPLETADO, ESTADO_INICIAL, type IncidenciaPublica, TIPO_FAROLA_FUNDIDA } from './incidencias';
+import {
+  ESTADO_COMPLETADO,
+  ESTADO_INICIAL,
+  type EstadoIncidencia,
+  type IncidenciaPublica,
+  TIPO_FAROLA_FUNDIDA,
+  esPosterior,
+} from './incidencias';
 
 /** RowKey de la fila candado: existe mientras la farola (partición) tiene una incidencia abierta. */
 export const CANDADO = 'abierta';
@@ -23,14 +30,32 @@ type EntidadCandado = {
 
 type Clave = { partitionKey: string; rowKey: string };
 
-/** Lo que el repositorio necesita de la tabla Incidencias (el SAS de la app es `rad`). */
+/** Lo que el repositorio necesita de la tabla Incidencias (el SAS de la app es `raud`). */
 export interface ClienteTablaIncidencias {
   createEntity(entity: EntidadIncidencia | EntidadCandado): Promise<unknown>;
-  deleteEntity(partitionKey: string, rowKey: string): Promise<unknown>;
-  getEntity<T extends object>(partitionKey: string, rowKey: string, options?: { queryOptions?: { select?: string[] } }): Promise<T>;
+  deleteEntity(partitionKey: string, rowKey: string, options?: { etag?: string }): Promise<unknown>;
+  getEntity<T extends object>(
+    partitionKey: string,
+    rowKey: string,
+    options?: { queryOptions?: { select?: string[] } },
+  ): Promise<T & { etag?: string }>;
+  /** Merge condicional: con `etag`, falla con 412 si la fila cambió desde que se leyó. */
+  updateEntity(
+    entity: { partitionKey: string; rowKey: string; estado: string },
+    mode: 'Merge',
+    options?: { etag?: string },
+  ): Promise<{ etag?: string }>;
   listEntities<T extends object>(options?: {
     queryOptions?: { filter?: string; select?: string[] };
   }): AsyncIterable<T & { partitionKey?: string; rowKey?: string }>;
+}
+
+export interface CambioEstado {
+  farola: string;
+  id: string;
+  estado: EstadoIncidencia;
+  /** uid de la directiva identificada. */
+  actor: string;
 }
 
 export interface NuevaIncidencia {
@@ -118,6 +143,95 @@ export class RepositorioIncidencias {
     }
   }
 
+  /**
+   * Cambia el estado de la incidencia abierta de una farola (spec 007). Como el alta: valida,
+   * escribe, audita y, si la auditoría falla, deshace y propaga el error.
+   *
+   * - Solo la incidencia a la que apunta el candado es modificable (si no, NoEncontrada).
+   * - Solo hacia delante (TransicionNoValida); la escritura lleva el ETag leído, así que un cambio
+   *   simultáneo no se pisa (HaCambiado, con el estado actual).
+   * - Completado borra el candado: la farola vuelve a admitir avisos.
+   */
+  async cambiarEstado(cambio: CambioEstado): Promise<IncidenciaPublica> {
+    const { farola, id, estado, actor } = cambio;
+    const candado = await this.leer<{ incidencia: string }>(farola, CANDADO);
+    if (!candado || candado.incidencia !== id) throw new NoEncontrada();
+    const fila = await this.leer<{ estado: string; creada: string }>(farola, id, ['estado', 'creada']);
+    if (!fila) throw new NoEncontrada();
+
+    const actual: IncidenciaPublica = { id, farola, estado: fila.estado, creada: fila.creada };
+    if (!esPosterior(fila.estado, estado)) throw new TransicionNoValida(actual);
+
+    const clave = `${farola}/${id}`;
+    const entrada = entidadDeAuditoria(
+      {
+        actor,
+        accion: 'incidencia.estado',
+        entidad: 'Incidencias',
+        clave,
+        antes: { estado: fila.estado },
+        despues: { estado },
+      },
+      this.ahora(),
+    );
+
+    let etagNuevo: string | undefined;
+    try {
+      ({ etag: etagNuevo } = await this.incidencias.updateEntity({ partitionKey: farola, rowKey: id, estado }, 'Merge', {
+        etag: fila.etag,
+      }));
+    } catch (e) {
+      if ((e as { statusCode?: number }).statusCode === 412) {
+        const ahora = await this.leer<{ estado: string; creada: string }>(farola, id, ['estado', 'creada']);
+        throw new HaCambiado(ahora ? { id, farola, estado: ahora.estado, creada: ahora.creada } : actual);
+      }
+      throw e;
+    }
+    const restaurarEstado = () =>
+      this.incidencias.updateEntity({ partitionKey: farola, rowKey: id, estado: fila.estado }, 'Merge', { etag: etagNuevo });
+
+    const completa = estado === ESTADO_COMPLETADO;
+    if (completa) {
+      try {
+        await this.incidencias.deleteEntity(farola, CANDADO, { etag: candado.etag });
+      } catch (e) {
+        await this.deshacerCon(restaurarEstado, clave);
+        throw e;
+      }
+    }
+
+    try {
+      await auditar(this.auditoria, entrada);
+    } catch (errorAuditoria) {
+      // Primero el candado: así nadie puede crear otra incidencia mientras se restaura el estado.
+      await this.deshacerCon(async () => {
+        if (completa) await this.incidencias.createEntity({ partitionKey: farola, rowKey: CANDADO, incidencia: id });
+        await restaurarEstado();
+      }, clave);
+      throw errorAuditoria;
+    }
+
+    return { ...actual, estado };
+  }
+
+  private async deshacerCon(deshacer: () => Promise<unknown>, clave: string): Promise<void> {
+    try {
+      await deshacer();
+    } catch {
+      throw new IncidenciaSinAuditar(clave);
+    }
+  }
+
+  /** Lee una fila con su ETag; undefined si no existe. */
+  private async leer<T extends object>(farola: string, rowKey: string, select?: string[]): Promise<(T & { etag?: string }) | undefined> {
+    try {
+      return await this.incidencias.getEntity<T>(farola, rowKey, select ? { queryOptions: { select } } : undefined);
+    } catch (e) {
+      if ((e as { statusCode?: number }).statusCode === 404) return undefined;
+      throw e;
+    }
+  }
+
   /** La incidencia abierta de una farola, si la hay (candado → fila). */
   async abiertaDe(farola: string): Promise<IncidenciaPublica | undefined> {
     try {
@@ -162,10 +276,34 @@ export class YaAbierta extends Error {
   }
 }
 
-/** La auditoría (o el candado) falló y no se pudo deshacer el alta: hay que revisarlo a mano. */
+/** No es la incidencia abierta de esa farola (no existe, está completada o es una fila suelta). */
+export class NoEncontrada extends Error {
+  constructor() {
+    super('No es la incidencia abierta de esa farola');
+    this.name = 'NoEncontrada';
+  }
+}
+
+/** El estado pedido no va después del actual (solo hacia delante). */
+export class TransicionNoValida extends Error {
+  constructor(readonly actual: IncidenciaPublica) {
+    super(`No se puede pasar de ${actual.estado} a ese estado`);
+    this.name = 'TransicionNoValida';
+  }
+}
+
+/** Otro cambio simultáneo ganó (ETag desfasado): no se pisa. */
+export class HaCambiado extends Error {
+  constructor(readonly actual: IncidenciaPublica) {
+    super('La incidencia ha cambiado mientras tanto');
+    this.name = 'HaCambiado';
+  }
+}
+
+/** La auditoría (o el candado) falló y no se pudo deshacer la escritura: hay que revisarlo a mano. */
 export class IncidenciaSinAuditar extends Error {
   constructor(clave: string) {
-    super(`La incidencia ${clave} se creó pero no se pudo auditar ni deshacer: revísala a mano`);
+    super(`La incidencia ${clave} cambió pero no se pudo auditar ni deshacer: revísala a mano`);
     this.name = 'IncidenciaSinAuditar';
   }
 }

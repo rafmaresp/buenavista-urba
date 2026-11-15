@@ -317,3 +317,11 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "Si eres comunero, poder poner una incidencia en una farola y luego poder verla" (Rafa).
 - Usuarios de prueba con sesión para el e2e: siguen pendientes (necesitan diseño revisado por Rai); el alta con identidad la prueban las unitarias y la integración contra Azurite.
 
+
+### 2026-11-15: Cambiar el estado de una incidencia (directiva)
+
+**By:** Rafa (spec resumida aprobada en el chat del proyecto y estados elegidos en el hilo)
+**What:** El cambio 7 se parte. El `7a` (`cambiar-estado-incidencia`, `specs/007-cambiar-estado-incidencia/`) añade `PUT /api/incidencias/{id}` solo para la directiva, con selector en la ficha del mapa. Los estados son los cuatro de `docs/producto.md` (Nuevo, Recibido, Profesional notificado, Completado), no Nuevo / En curso / Completado. Solo hacia delante, se pueden saltar estados y una Completada no se reabre: deja de ser "propuesta a confirmar". Completado borra el candado y la farola vuelve a admitir avisos. El SAS de `Incidencias` de la app pasa de `rad` a `raud`. Queda en el 7 (`gestion-estados`): panel con filtros y orden, fecha estimada de Profesional notificado y ver u ocultar el comentario.
+**Why:** "Cambiar el estado de la incidencia, un PUT" (Rafa). En el hilo eligió "Los 4 del producto" frente a Nuevo / En curso / Completado, que venía de la definición inicial ya corregida el 2026-11-12.
+- Cambios simultáneos: ETag; el segundo recibe `409 ha-cambiado` con el estado actual.
+- El rol se comprueba en la Function tras `identificar()`; un comunero recibe el 403 genérico.

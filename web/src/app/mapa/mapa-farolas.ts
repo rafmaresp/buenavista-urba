@@ -4,10 +4,15 @@ import { Sesion } from '../sesion';
 import { CENTRO, ZOOM_ETIQUETAS, ZOOM_INICIAL, crearCapasBase } from './capas';
 import { FarolaPublica, cargarFarolas } from './farolas-cliente';
 import {
+  ESTADO_COMPLETADO,
   ErrorAviso,
+  ErrorCambio,
+  EstadoIncidencia,
   IncidenciaPublica,
   MAX_COMENTARIO,
+  cambiarEstado,
   cargarIncidencias,
+  estadosSiguientes,
   reportarIncidencia,
 } from './incidencias-cliente';
 
@@ -16,12 +21,19 @@ export type EstadoCarga = 'cargando' | 'ok' | 'error';
 /** Envía el aviso de una farola y devuelve su incidencia abierta (creada o existente). */
 export type Avisar = (farola: string, comentario: string) => Promise<IncidenciaPublica>;
 
+/** Cambia el estado de una incidencia y devuelve cómo queda (specs/007, solo directiva). */
+export type Cambiar = (incidencia: IncidenciaPublica, estado: EstadoIncidencia) => Promise<IncidenciaPublica>;
+
 export interface OpcionesFicha {
   incidencia?: IncidenciaPublica;
   /** Hay sesión: se muestra el formulario de aviso. */
   dentro: boolean;
   /** Envía el aviso con el comentario escrito; si falla, lanza (ErrorAviso). */
   avisar?: (comentario: string) => Promise<void>;
+  /** Solo con rol directiva: guarda el estado elegido; si falla, lanza (ErrorCambio). */
+  cambiarEstado?: (estado: EstadoIncidencia) => Promise<void>;
+  /** Mensaje para la directiva tras un cambio que no se aplicó (otro cambio ganó). */
+  aviso?: string;
 }
 
 const FECHA = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -76,14 +88,59 @@ function formularioAviso(avisar: (comentario: string) => Promise<void>): HTMLFor
   return form;
 }
 
+function mensajeErrorCambio(e: unknown): string {
+  if (e instanceof ErrorCambio && e.motivo === 'sin-sesion') return 'Tu sesión ha caducado o no tienes permiso. Vuelve a entrar.';
+  return 'No se pudo cambiar el estado. Inténtalo de nuevo.';
+}
+
+/** Selector de estado (solo directiva): solo los estados posteriores al actual. */
+function formularioEstado(actual: string, cambiar: (estado: EstadoIncidencia) => Promise<void>): HTMLFormElement {
+  const form = elemento('form', 'ficha__estado');
+  const etiqueta = elemento('label', 'ficha__etiqueta', 'Cambiar estado');
+  const selector = elemento('select', 'ficha__selector');
+  for (const estado of estadosSiguientes(actual)) {
+    const opcion = elemento('option', '', estado);
+    opcion.value = estado;
+    selector.append(opcion);
+  }
+  etiqueta.append(selector);
+  const boton = elemento('button', 'ficha__boton', 'Guardar estado');
+  boton.type = 'submit';
+  const error = elemento('p', 'ficha__error');
+  error.setAttribute('role', 'alert');
+  error.hidden = true;
+
+  form.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    boton.disabled = true;
+    error.hidden = true;
+    cambiar(selector.value as EstadoIncidencia).catch((e: unknown) => {
+      error.textContent = mensajeErrorCambio(e);
+      error.hidden = false;
+      boton.disabled = false;
+    });
+  });
+
+  form.append(etiqueta, boton, error);
+  return form;
+}
+
 /** Ficha de la farola: solo texto (textContent), nunca HTML interpolado. */
 export function contenidoFicha(farola: FarolaPublica, opciones: OpcionesFicha = { dentro: false }): HTMLElement {
   const ficha = elemento('div', 'ficha');
   ficha.append(elemento('h2', '', farola.id), elemento('p', '', farola.calle));
+  if (opciones.aviso) {
+    const aviso = elemento('p', 'ficha__error', opciones.aviso);
+    aviso.setAttribute('role', 'alert');
+    ficha.append(aviso);
+  }
 
   if (opciones.incidencia) {
     const { estado, creada } = opciones.incidencia;
     ficha.append(elemento('p', 'ficha__incidencia', `Incidencia abierta: ${estado}, avisada el ${fechaCorta(creada)}`));
+    if (opciones.cambiarEstado && estadosSiguientes(estado).length > 0) {
+      ficha.append(formularioEstado(estado, opciones.cambiarEstado));
+    }
   } else if (opciones.dentro && opciones.avisar) {
     ficha.append(formularioAviso(opciones.avisar));
   } else {
@@ -118,6 +175,11 @@ export class MapaFarolas implements OnDestroy {
     reportarIncidencia((url, init) => this.sesion.llamar(url, init), farola, comentario),
   );
 
+  /** Por defecto PUT /api/incidencias/{id} con el token de la sesión (solo lo acepta para la directiva). */
+  readonly cambiar = input<Cambiar>((incidencia, estado) =>
+    cambiarEstado((url, init) => this.sesion.llamar(url, init), incidencia, estado),
+  );
+
   protected readonly estado = signal<EstadoCarga>('cargando');
   protected readonly errorIncidencias = signal(false);
   private readonly contenedor = viewChild.required<ElementRef<HTMLElement>>('contenedor');
@@ -125,6 +187,8 @@ export class MapaFarolas implements OnDestroy {
   private readonly marcas = L.layerGroup();
   private readonly marcaDe = new Map<string, L.Marker>();
   private readonly incidencias = new Map<string, IncidenciaPublica>();
+  /** Aviso de un solo uso para la próxima ficha de esa farola. */
+  private readonly avisos = new Map<string, string>();
 
   constructor() {
     afterNextRender(() => {
@@ -180,14 +244,45 @@ export class MapaFarolas implements OnDestroy {
   }
 
   private ficha(farola: FarolaPublica): HTMLElement {
+    const incidencia = this.incidencias.get(farola.id);
+    const aviso = this.avisos.get(farola.id);
+    this.avisos.delete(farola.id);
     return contenidoFicha(farola, {
-      incidencia: this.incidencias.get(farola.id),
+      incidencia,
       dentro: this.sesion.dentro(),
+      aviso,
       avisar: async (comentario) => {
-        const incidencia = await this.avisar()(farola.id, comentario);
-        this.marcarIncidencia(farola, incidencia);
+        const creada = await this.avisar()(farola.id, comentario);
+        this.marcarIncidencia(farola, creada);
       },
+      // El selector solo se enseña a la directiva; quien decide es la API en cada petición.
+      cambiarEstado:
+        incidencia && this.sesion.rol() === 'directiva'
+          ? async (estado) => {
+              try {
+                this.aplicarEstado(farola, await this.cambiar()(incidencia, estado));
+              } catch (e) {
+                if (!(e instanceof ErrorCambio) || e.motivo !== 'ha-cambiado') throw e;
+                // Otro cambio ganó o ya no está abierta: se muestra cómo está ahora, sin pisarlo.
+                this.avisos.set(farola.id, 'La incidencia había cambiado. Este es su estado actual.');
+                if (e.actual) this.aplicarEstado(farola, e.actual);
+                else this.aplicarEstado(farola, { ...incidencia, estado: ESTADO_COMPLETADO });
+              }
+            }
+          : undefined,
     });
+  }
+
+  /** Tras cambiar el estado: Completado libera la farola (sin incidencia, admite avisos). */
+  private aplicarEstado(farola: FarolaPublica, incidencia: IncidenciaPublica): void {
+    if (incidencia.estado !== ESTADO_COMPLETADO) {
+      this.marcarIncidencia(farola, incidencia);
+      return;
+    }
+    this.incidencias.delete(farola.id);
+    const marca = this.marcaDe.get(farola.id);
+    marca?.setIcon(iconoFarola(farola, false));
+    marca?.getPopup()?.update();
   }
 
   /** Tras avisar (o si ya había una), la marca y la ficha muestran la incidencia sin recargar. */

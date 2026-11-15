@@ -1,7 +1,7 @@
 import { app } from '@azure/functions';
 import { PARTICION_FAROLAS } from '../farolas';
 import { depsIdentidad } from '../identidad';
-import { type DepsIncidencias, respuestaCrear, respuestaListar } from '../incidencias-http';
+import { type DepsIncidencias, respuestaCambiarEstado, respuestaCrear, respuestaListar } from '../incidencias-http';
 import { RepositorioIncidencias } from '../incidencias-repo';
 import { tablaClient } from '../tablas';
 
@@ -31,5 +31,22 @@ app.http('incidencias', {
     const registrarError = (mensaje: string) => context.error(mensaje);
     if (request.method === 'GET') return respuestaListar(deps(registrarError));
     return respuestaCrear(request.headers, () => request.json(), depsIdentidad(registrarError), deps(registrarError));
+  },
+});
+
+// PUT no público y solo directiva (spec 007): el rol se comprueba en respuestaCambiarEstado().
+app.http('incidencias-estado', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'incidencias/{id}',
+  handler: (request, context) => {
+    const registrarError = (mensaje: string) => context.error(mensaje);
+    return respuestaCambiarEstado(
+      request.headers,
+      request.params.id,
+      () => request.json(),
+      depsIdentidad(registrarError),
+      deps(registrarError),
+    );
   },
 });

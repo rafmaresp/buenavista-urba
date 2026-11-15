@@ -1,7 +1,7 @@
 import type { RespuestaHttp } from './farolas';
 import { type Cabeceras, type DepsIdentidad, identificar } from './identidad';
-import { validarPeticion } from './incidencias';
-import { type RepositorioIncidencias, YaAbierta } from './incidencias-repo';
+import { validarCambio, validarPeticion } from './incidencias';
+import { HaCambiado, NoEncontrada, type RepositorioIncidencias, TransicionNoValida, YaAbierta } from './incidencias-repo';
 
 /** Dependencias de las Functions de incidencias (inyectables en las unitarias). */
 export interface DepsIncidencias {
@@ -62,6 +62,43 @@ export async function respuestaCrear(
   } catch (e) {
     if (e instanceof YaAbierta) return respuesta(409, { error: 'ya-abierta', incidencia: e.existente });
     deps.registrarError(`POST /api/incidencias falló: ${describir(e)}`);
+    return respuesta(503, { error: 'no-disponible' });
+  }
+}
+
+/**
+ * PUT /api/incidencias/{id} (spec 007): solo la directiva cambia el estado. Identifica en cada
+ * petición y comprueba el rol aquí, en el servidor (constitución IV); un comunero recibe el mismo
+ * 403 genérico que quien no está en la lista. El cuerpo nunca se registra.
+ */
+export async function respuestaCambiarEstado(
+  cabeceras: Cabeceras,
+  id: string | undefined,
+  leerCuerpo: () => Promise<unknown>,
+  identidad: DepsIdentidad,
+  deps: DepsIncidencias,
+): Promise<RespuestaHttp> {
+  const quien = await identificar(cabeceras, identidad);
+  if (!quien.ok) return quien.respuesta;
+  if (quien.usuario.rol !== 'directiva') return respuesta(403, { error: 'sin-acceso' });
+
+  let cuerpo: unknown;
+  try {
+    cuerpo = await leerCuerpo();
+  } catch {
+    return respuesta(400, { error: 'peticion-no-valida' });
+  }
+  const peticion = validarCambio(id, cuerpo);
+  if (!peticion) return respuesta(400, { error: 'peticion-no-valida' });
+
+  try {
+    const incidencia = await deps.incidencias().cambiarEstado({ ...peticion, actor: quien.usuario.uid });
+    return respuesta(200, { incidencia });
+  } catch (e) {
+    if (e instanceof NoEncontrada) return respuesta(404, { error: 'no-encontrada' });
+    if (e instanceof TransicionNoValida) return respuesta(409, { error: 'transicion-no-valida', incidencia: e.actual });
+    if (e instanceof HaCambiado) return respuesta(409, { error: 'ha-cambiado', incidencia: e.actual });
+    deps.registrarError(`PUT /api/incidencias falló: ${describir(e)}`);
     return respuesta(503, { error: 'no-disponible' });
   }
 }

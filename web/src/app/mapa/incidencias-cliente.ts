@@ -85,3 +85,56 @@ export async function reportarIncidencia(llamar: LlamarFn, farola: string, comen
   if (!esIncidencia(cuerpo?.incidencia)) throw new ErrorAviso('no-disponible');
   return soloPublico(cuerpo.incidencia);
 }
+
+// ---------- Cambio de estado (specs/007-cambiar-estado-incidencia, solo directiva) ----------
+
+/** Ciclo de estados, en orden (docs/producto.md sec. 4). Lo valida la API; aquí solo se ofrece. */
+export const ESTADOS = ['Nuevo', 'Recibido', 'Profesional notificado', 'Completado'] as const;
+export type EstadoIncidencia = (typeof ESTADOS)[number];
+export const ESTADO_COMPLETADO: EstadoIncidencia = 'Completado';
+
+/** Estados a los que se puede pasar desde `estado`: solo hacia delante. */
+export function estadosSiguientes(estado: string): EstadoIncidencia[] {
+  const i = (ESTADOS as readonly string[]).indexOf(estado);
+  return i < 0 ? [] : ESTADOS.slice(i + 1);
+}
+
+/** Por qué no se pudo cambiar: sin sesión o sin permiso, otro cambio ganó o ya no está abierta, o sin servicio. */
+export type MotivoErrorCambio = 'sin-sesion' | 'ha-cambiado' | 'no-disponible';
+
+export class ErrorCambio extends Error {
+  constructor(
+    readonly motivo: MotivoErrorCambio,
+    /** Con `ha-cambiado`: la incidencia como está ahora, si la API la devolvió (si no, ya no está abierta). */
+    readonly actual?: IncidenciaPublica,
+  ) {
+    super(`No se pudo cambiar el estado: ${motivo}`);
+    this.name = 'ErrorCambio';
+  }
+}
+
+/** PUT /api/incidencias/{id}. Devuelve la incidencia con el estado nuevo; cualquier otro caso lanza ErrorCambio. */
+export async function cambiarEstado(
+  llamar: LlamarFn,
+  incidencia: IncidenciaPublica,
+  estado: EstadoIncidencia,
+): Promise<IncidenciaPublica> {
+  let respuesta: Awaited<ReturnType<LlamarFn>>;
+  try {
+    respuesta = await llamar(`/api/incidencias/${encodeURIComponent(incidencia.id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farola: incidencia.farola, estado }),
+    });
+  } catch {
+    throw new ErrorCambio('no-disponible');
+  }
+  if (respuesta.status === 401 || respuesta.status === 403) throw new ErrorCambio('sin-sesion');
+  const cuerpo = (await respuesta.json().catch(() => null)) as { incidencia?: unknown } | null;
+  if (respuesta.status === 404) throw new ErrorCambio('ha-cambiado');
+  if (respuesta.status === 409) {
+    throw new ErrorCambio('ha-cambiado', esIncidencia(cuerpo?.incidencia) ? soloPublico(cuerpo.incidencia) : undefined);
+  }
+  if (respuesta.status !== 200 || !esIncidencia(cuerpo?.incidencia)) throw new ErrorCambio('no-disponible');
+  return soloPublico(cuerpo.incidencia);
+}
