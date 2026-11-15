@@ -43,4 +43,6 @@
 
 ## 8. Centro y zoom
 
-- **Decision**: centro 37.3165, -5.9606, zoom 17 (prototipo), `maxZoom` 20 con `maxNativeZoom` 19 en ambas capas.
+- **Decision**: vista inicial en 37.3165, -5.9606, zoom 17 (prototipo) mientras carga el catálogo; al llegar, el mapa se encuadra a las farolas (`fitBounds` con 24 px de margen). `maxZoom` 20 con `maxNativeZoom` 19 en ambas capas.
+- **Rationale**: en un móvil en vertical (Pixel 7) el centro fijo a zoom 17 dejaba farolas del borde fuera de la pantalla; encuadrar garantiza ver las 70 (SC-001).
+- **Alternatives considered**: bajar el zoom inicial a 16 fijo (depende del tamaño de pantalla).
