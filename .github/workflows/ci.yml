@@ -81,7 +81,7 @@ jobs:
         run: |
           npm ci
           npm run build
-          npm test -- --coverage --coverage-reporters=lcov --coverage-reporters=text-summary
+          npm test -- --coverage
       - name: api (build y tests contra Azurite)
         working-directory: api
         env:
