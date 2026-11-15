@@ -1,6 +1,6 @@
 # Infraestructura (Azure)
 
-Todo lo de Azure se declara en `main.bicep` y se despliega con el workflow [`infra.yml`](../.github/workflows/infra.yml). Diseño y decisiones: [`specs/002-infra-bicep/`](../specs/002-infra-bicep/).
+Todo lo de Azure se declara en `main.bicep` y se valida en los PR con [`infra.yml`](../.github/workflows/infra.yml) y se despliega a mano con [`infra-desplegar.yml`](../.github/workflows/infra-desplegar.yml). Diseño y decisiones: [`specs/002-infra-bicep/`](../specs/002-infra-bicep/).
 
 | Recurso | Nombre | Región | Coste esperado |
 |---|---|---|---|
@@ -61,14 +61,14 @@ En GitHub (Settings del repo):
 ## Desplegar
 
 1. Un PR que toca `infra/**` valida el Bicep y, cuando Rafa aprueba el entorno `infra`, publica el `what-if` en el resumen del job (solo recursos y tipo de cambio: las propiedades llevarían el SAS y el correo).
-2. Tras fusionar: Actions → **Infraestructura (Bicep)** → *Run workflow* en `main` → aprobar el entorno `infra`.
+2. Tras fusionar: Actions → **Desplegar infraestructura (Bicep)** → *Run workflow* en `main` → aprobar el entorno `infra`.
 3. Después, el despliegue de la app (`azure-swa.yml`) obtiene el token de la SWA por OIDC en cada push a `main`. Tras el primer despliegue de infraestructura, borra el secreto `AZURE_STATIC_WEB_APPS_API_TOKEN` si existía.
 
 Una tabla nueva se declara en `main.bicep` (`tableServices/tables`), se añade a `TABLAS` en `api/src/tablas.ts` (un test comprueba que coinciden) y se despliega la infraestructura **antes** que la app que la usa: la app no puede crear tablas.
 
 ### Orden con el catálogo de farolas (cambio 2)
 
-1. **Infraestructura (Bicep)** desde `main`: crea `Farolas` y `Auditoria` y cambia los app settings de la SWA.
+1. **Desplegar infraestructura (Bicep)** desde `main`: crea `Farolas` y `Auditoria` y cambia los app settings de la SWA.
 2. **Cargar farolas** (Actions → *Run workflow* en `main` → aprobar `infra`): siembra las 70 farolas, cada alta auditada con `sistema:carga`. Solo da de alta las que faltan y nunca modifica una existente, así que relanzarla no cambia nada (el resumen dice "Altas: 0").
 3. **Despliegue Azure Static Web Apps**: si corrió antes del paso 1, relánzalo. `https://<swa>/api/farolas` debe devolver 70 farolas sin `precision`.
 
@@ -78,7 +78,7 @@ Si el gasto real del mes llega a 1 €, la Logic App pone la cuenta de Storage e
 
 1. Revisa la causa en el portal: Cost Management → Análisis de costes del grupo `rg-buenavista-incidencias`.
 2. Corrige la causa (por ejemplo, rota el SAS si se ha filtrado; ver abajo).
-3. Ejecuta el despliegue de `infra.yml`, que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
+3. Ejecuta **Desplegar infraestructura (Bicep)** (`infra-desplegar.yml`), que vuelve a poner `publicNetworkAccess: Enabled`. Alternativa inmediata: `az storage account update -g rg-buenavista-incidencias -n <cuenta> --public-network-access Enabled`.
 
 Los datos de coste llegan con 8–24 h de retraso: el corte es un respaldo, no un freno en tiempo real.
 

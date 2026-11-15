@@ -1,0 +1,51 @@
+name: Desplegar infraestructura (Bicep)
+
+# A mano (workflow_dispatch), solo desde main y tras aprobar el entorno `infra`: despliega
+# infra/main.bicep. También reactiva Storage tras un corte. El Bicep ya se validó en el PR
+# (infra.yml); si no compila, `az deployment group create` falla igual.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: infra-desplegar
+  cancel-in-progress: false
+
+env:
+  RG: rg-buenavista-incidencias
+  CORTE_ROLE_NAME: Buenavista corte de Storage
+
+jobs:
+  desplegar:
+    name: Desplegar (Azure)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_INFRA }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Desplegar
+        env:
+          AVISOS_EMAIL: ${{ secrets.AVISOS_EMAIL }}
+        run: |
+          CORTE_ROLE_ID=$(az role definition list --custom-role-only true --name "$CORTE_ROLE_NAME" --query "[0].name" -o tsv)
+          test -n "$CORTE_ROLE_ID" || { echo "::error::No existe el rol \"$CORTE_ROLE_NAME\" (paso único de infra/README.md)"; exit 1; }
+          export CORTE_ROLE_ID
+          # -o none: la salida completa del despliegue no se imprime; solo los outputs (sin secretos).
+          az deployment group create -g "$RG" -n "infra-${GITHUB_RUN_ID}" \
+            --parameters infra/main.bicepparam --only-show-errors -o none
+          {
+            echo '## Infraestructura desplegada'
+            az deployment group show -g "$RG" -n "infra-${GITHUB_RUN_ID}" \
+              --query "properties.outputs.{swa:swaName.value, url:swaHostname.value, storage:storageName.value}" -o table | sed 's/^/    /'
+            echo
+            echo 'El SAS de datos caduca dentro de un año: vuelve a desplegar antes (infra/README.md).'
+          } >> "$GITHUB_STEP_SUMMARY"
