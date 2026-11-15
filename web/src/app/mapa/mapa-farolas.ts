@@ -243,12 +243,17 @@ export class MapaFarolas implements OnDestroy {
         this.marcarIncidencia(farola, incidencia);
       },
       // Solo muestra el control: quien decide es la API (constitución IV).
-      mover: this.sesion.rol() === 'directiva' ? () => this.empezarMover(farola.id) : undefined,
+      mover:
+        this.sesion.rol() === 'directiva' && this.movimiento()?.fase !== 'guardando'
+          ? () => this.empezarMover(farola.id)
+          : undefined,
     });
   }
 
   /** Modo mover: solo esta marca se puede arrastrar; al soltarla se pide confirmación. */
   empezarMover(id: string): void {
+    // Mientras se guarda otra farola no se empieza a mover ninguna (su respuesta aún no ha llegado).
+    if (this.movimiento()?.fase === 'guardando') return;
     this.cancelarMover();
     const marca = this.marcaDe.get(id);
     if (!marca?.dragging) return;
@@ -264,19 +269,26 @@ export class MapaFarolas implements OnDestroy {
   async guardar(): Promise<void> {
     const movimiento = this.movimiento();
     const marca = movimiento && this.marcaDe.get(movimiento.id);
-    if (!movimiento || movimiento.fase !== 'confirmar' || !marca) return;
-    this.movimiento.set({ ...movimiento, fase: 'guardando' });
+    const desde = this.desde;
+    if (!movimiento || movimiento.fase !== 'confirmar' || !marca || !desde) return;
+    const guardando: Movimiento = { ...movimiento, fase: 'guardando' };
+    this.movimiento.set(guardando);
     marca.dragging?.disable();
+    marca.off('dragend');
     const { lat, lng } = marca.getLatLng();
     try {
       const movida = await this.reubicar()(movimiento.id, redondear(lat), redondear(lng));
       marca.setLatLng([movida.lat, movida.lon]);
-      this.desde = undefined;
       this.avisoMover.set({ texto: `${movimiento.id} se ha movido.`, error: false });
     } catch (e) {
+      marca.setLatLng(desde);
       this.avisoMover.set({ texto: mensajeErrorMover(e), error: true });
     }
-    this.cancelarMover();
+    // Solo cierra el modo mover si sigue siendo este guardado (p. ej. no se recargó el mapa entretanto).
+    if (this.movimiento() === guardando) {
+      this.desde = undefined;
+      this.movimiento.set(null);
+    }
   }
 
   /** Sale del modo mover y devuelve la marca a donde estaba (si no se guardó). */

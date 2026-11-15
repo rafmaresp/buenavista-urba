@@ -358,6 +358,55 @@ describe('MapaFarolas — mover farola (specs/008)', () => {
     expect(barra(el)?.textContent).toContain(texto);
   });
 
+  it('mientras se guarda una farola no se puede empezar a mover otra (revisión PR #34)', async () => {
+    comoRol('directiva');
+    let responder!: () => void;
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: (id, lat, lon) =>
+        new Promise((r) => {
+          responder = () => r({ ...FAROLAS[0]!, id, lat, lon });
+        }),
+    });
+    await empezarMover(el, fixture, 'F01');
+    soltarEn(marca(fixture, 'F01'), NUEVA);
+    await esperar(fixture);
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+
+    el.querySelector<HTMLElement>('[title="Farola F02"]')!.click();
+    expect(el.querySelector('.leaflet-popup-content .ficha__mover')).toBeNull();
+    fixture.componentInstance.empezarMover('F02');
+    expect(marca(fixture, 'F02').dragging!.enabled()).toBe(false);
+
+    responder();
+    await esperar(fixture);
+    expect(marca(fixture, 'F01').getLatLng()).toMatchObject({ lat: NUEVA.lat, lng: NUEVA.lon });
+    expect(barra(el)?.textContent).toContain('F01 se ha movido.');
+  });
+
+  it('si el mapa se recarga mientras se guarda, la respuesta no toca el estado nuevo', async () => {
+    comoRol('directiva');
+    let fallar!: () => void;
+    const { fixture, el } = await montar(async () => FAROLAS, {
+      reubicar: () =>
+        new Promise((_, rechazar) => {
+          fallar = () => rechazar(new ErrorReubicar('no-disponible'));
+        }),
+    });
+    await empezarMover(el, fixture, 'F01');
+    soltarEn(marca(fixture, 'F01'), NUEVA);
+    await esperar(fixture);
+    boton(el, 'Guardar').click();
+    await esperar(fixture);
+    await fixture.componentInstance.cargar();
+    await empezarMover(el, fixture, 'F02');
+
+    fallar();
+    await esperar(fixture);
+    expect(fixture.componentInstance.movimiento()).toEqual({ id: 'F02', fase: 'arrastrando' });
+    expect(marca(fixture, 'F02').dragging!.enabled()).toBe(true);
+  });
+
   it('un error inesperado también devuelve la marca', async () => {
     comoRol('directiva');
     const { fixture, el } = await montar(async () => FAROLAS, { reubicar: async () => Promise.reject(new Error('x')) });
