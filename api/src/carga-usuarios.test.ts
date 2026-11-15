@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { cargarUsuarios } from './carga-usuarios';
+import { describe, expect, it, vi } from 'vitest';
+import { cargarUsuarios, ejecutarCargaUsuarios } from './carga-usuarios';
 import { auditoriaDoble, filaAna, tablaUsuarios } from './pruebas/usuarios-dobles';
 import { RepositorioUsuarios } from './usuarios-repo';
 
@@ -47,5 +47,41 @@ describe('cargarUsuarios', () => {
     const { repo, cliente } = preparar();
     expect(await cargarUsuarios(repo, [])).toEqual({ altas: 0, existentes: 0 });
     expect(cliente.listEntities).not.toHaveBeenCalled();
+  });
+});
+
+describe('ejecutarCargaUsuarios (script cargar-usuarios)', () => {
+  it.each([{}, { USUARIOS_ALTA: '' }, { USUARIOS_ALTA: '  \n' }])('sin lista termina en 0 sin abrir las tablas (%j)', async (env) => {
+    const crearRepo = vi.fn();
+    expect(await ejecutarCargaUsuarios(env, crearRepo)).toEqual({
+      salida: ['Sin USUARIOS_ALTA: no se da de alta a nadie.'],
+      errores: [],
+      codigo: 0,
+    });
+    expect(crearRepo).not.toHaveBeenCalled();
+  });
+
+  it('con lista válida da solo recuentos', async () => {
+    const { repo } = preparar();
+    const r = await ejecutarCargaUsuarios({ USUARIOS_ALTA: 'ana@example.com,comunero\nbea@example.com,directiva' }, () => repo);
+    expect(r).toEqual({ salida: ['Lista: 2 usuarios. Ya existían: 1. Altas: 1.'], errores: [], codigo: 0 });
+  });
+
+  it('con lista inválida falla en 1 sin abrir las tablas y sin correos en la salida', async () => {
+    const crearRepo = vi.fn();
+    const r = await ejecutarCargaUsuarios({ USUARIOS_ALTA: 'ana@example.com,admin\nbea@example.com' }, crearRepo);
+    expect(r.codigo).toBe(1);
+    expect(r.errores).toHaveLength(3);
+    expect([...r.salida, ...r.errores].join('\n')).not.toContain('@');
+    expect(crearRepo).not.toHaveBeenCalled();
+  });
+
+  it('un error de tabla da solo nombre y código, nunca el mensaje con el SAS', async () => {
+    const { repo, cliente } = preparar();
+    cliente.listEntities.mockImplementation(() => {
+      throw Object.assign(new Error('https://x?sig=secreto bea@example.com'), { name: 'RestError', statusCode: 403 });
+    });
+    const r = await ejecutarCargaUsuarios({ USUARIOS_ALTA: 'bea@example.com,comunero' }, () => repo);
+    expect(r).toEqual({ salida: [], errores: ['La carga ha fallado: RestError 403'], codigo: 1 });
   });
 });

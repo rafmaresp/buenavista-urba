@@ -40,7 +40,7 @@ description: "Tareas del cambio 007-alta-usuarios"
 **Independent Test**: dos cargas seguidas ⇒ la segunda da 0 altas y ninguna auditoría; un existente con otro rol no cambia.
 
 - [X] T010 [P] [US2] Tests en `api/src/carga-usuarios.test.ts`: existente (cualquier estado, distinto rol) cuenta como existente sin escritura; lista vacía ⇒ 0 altas
-- [X] T011 [US2] Script: secreto vacío o ausente ⇒ `Sin USUARIOS_ALTA: no se da de alta a nadie.` y código 0, sin abrir tablas, en `api/src/scripts/cargar-usuarios.ts`
+- [X] T011 [US2] Script: secreto vacío o ausente ⇒ `Sin USUARIOS_ALTA: no se da de alta a nadie.` y código 0, sin abrir tablas; lógica testeable en `ejecutarCargaUsuarios` (`api/src/carga-usuarios.ts`) y `api/src/scripts/cargar-usuarios.ts` solo la invoca
 - [X] T012 [US2] Integración `api/src/carga-usuarios.integration.test.ts` contra Azurite con SAS `rad` en `Usuarios` y `a` en `Auditoria`: alta, relanzar da 0 altas y una sola entrada de auditoría
 
 ## Phase 5: User Story 3 - Ningún correo sale del secreto (P1)

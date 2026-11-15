@@ -32,3 +32,8 @@
 - **Decision**: "leer correos y luego crear", sin escritura condicional por correo.
 - **Rationale**: la clave de la fila es el uid aleatorio, así que Table Storage no puede rechazar un correo repetido. Solo escribe altas el job `desplegar`, que va en el grupo de concurrencia `infra-desplegar` (de uno en uno) y es el único con un SAS que permite añadir; la app no puede crear usuarios. Si aun así apareciera un duplicado, el login responde 403 a ese correo y lo registra (spec 005), sin abrir acceso.
 - **Alternatives considered**: fila candado por hash del correo (otra fila con dato derivado del correo y más código para un caso que el workflow ya impide).
+
+## R7. Una lista mal escrita para el despliegue
+
+- **Decision**: la carga de usuarios falla el job `desplegar` (sin escribir nada), y con él el despliegue de la app de ese push.
+- **Rationale**: solo ocurre cuando cambia la infra (o al lanzarlo a mano), el aviso queda en rojo donde Rafa lo ve y se arregla editando el secreto y relanzando. Un paso que no bloquee (`continue-on-error`) dejaría el job en verde y el fallo pasaría inadvertido.
