@@ -118,3 +118,29 @@ jobs:
           app_location: web
           api_location: api
           output_location: dist/web/browser
+      - name: Verificar el entorno real (solo lectura)
+        if: steps.token.outputs.token != ''
+        run: |
+          # Humo contra Azure: los e2e de la CI corren en local con un emulador, así que aquí se comprueba
+          # que lo desplegado responde. Solo GET anónimos. La SWA tarda en propagar: hasta 10 intentos.
+          host=$(az staticwebapp show -n "$SWA" -g "$RG" --query defaultHostname -o tsv --only-show-errors)
+          test -n "$host" || { echo "::error::No se pudo obtener el host de la SWA"; exit 1; }
+          url="https://$host"
+          comprobar() {
+            curl -fsS -m 20 "$url/api/health" > /dev/null || { echo "/api/health no responde"; return 1; }
+            curl -fsS -m 20 -D cabeceras.txt "$url/api/farolas" -o farolas.json || { echo "/api/farolas no responde"; return 1; }
+            n=$(jq '.farolas | length' farolas.json) || return 1
+            [ "$n" -ge 70 ] || { echo "/api/farolas devuelve $n farolas (se esperan al menos 70)"; return 1; }
+            ! grep -qi precision farolas.json || { echo "/api/farolas expone la precisión"; return 1; }
+            grep -qi '^cache-control: public, max-age=300' cabeceras.txt || { echo "/api/farolas sin Cache-Control público de 5 min"; return 1; }
+          }
+          for i in $(seq 1 10); do
+            if comprobar; then
+              echo "Entorno verificado en intento $i: /api/health y /api/farolas ($n farolas, sin precisión)."
+              echo "### Verificación del entorno real: correcta ($n farolas)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::El entorno desplegado no pasa la verificación (revisa /api/health y /api/farolas)"
+          exit 1
