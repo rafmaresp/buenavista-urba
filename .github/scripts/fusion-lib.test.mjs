@@ -66,10 +66,11 @@ test('las líneas cambiadas no cuentan lockfiles', () => {
 test('majorOf entiende rangos habituales', () => {
   assert.equal(majorOf('^20.1.0'), '20');
   assert.equal(majorOf('~5.4.2'), '5');
-  assert.equal(majorOf('>=22'), '22');
   assert.equal(majorOf('0.4.1'), '0.4');
-  assert.equal(majorOf('latest'), null);
-  assert.equal(majorOf('github:a/b'), null);
+  assert.equal(majorOf('22.0.0-rc.1'), '22');
+  for (const r of ['>=3.22.0', '^1.9.3 || ^2.0.0', '1.0.0 - 2.0.0', '1.x', '*', 'latest', 'github:a/b', '<2.0.0', '^1']) {
+    assert.equal(majorOf(r), null, r);
+  }
 });
 
 test('solo los cambios menores o de parche de dependencias pasan', () => {
@@ -81,6 +82,7 @@ test('solo los cambios menores o de parche de dependencias pasan', () => {
   assert.equal(riskyDependencyChanges(base, { ...base, devDependencies: { vitest: '^4.0.0' } }).length, 1);
   assert.equal(riskyDependencyChanges(base, { ...base, dependencies: { ...base.dependencies, tiny: '0.4.0' } }).length, 1);
   assert.equal(riskyDependencyChanges(base, { ...base, dependencies: { ...base.dependencies, nueva: '^1.0.0' } }).length, 1);
+  assert.equal(riskyDependencyChanges(base, { ...base, dependencies: { ...base.dependencies, zod: '>=3.22.0' } }).length, 1);
   // Quitar una dependencia no es un riesgo de versión.
   assert.deepEqual(riskyDependencyChanges(base, { dependencies: { leaflet: '^1.9.3', zod: '^3.22.0', tiny: '0.3.1' } }), []);
 });
@@ -114,4 +116,17 @@ test('un check en rojo o un check obligatorio ausente bloquea', () => {
     green.map((c) => (c.name === 'Revisor independiente' ? { ...c, conclusion: 'skipped' } : c)),
   );
   assert.equal(revisorSaltado.ready, false);
+});
+
+test('cambiar scripts, overrides o engines de un package.json es sensible', () => {
+  const base = { scripts: { test: 'ng test --no-watch' }, dependencies: { leaflet: '^1.9.3' } };
+  assert.deepEqual(riskyDependencyChanges(base, structuredClone(base)), []);
+  assert.deepEqual(riskyDependencyChanges(base, { ...base, scripts: { test: 'true' } }), ['cambia `scripts`']);
+  assert.deepEqual(riskyDependencyChanges(base, { ...base, overrides: { leaflet: '2.0.0' } }), ['cambia `overrides`']);
+  assert.deepEqual(riskyDependencyChanges(base, { ...base, engines: { node: '>=24' } }), ['cambia `engines`']);
+});
+
+test('la configuración de la CI es zona sensible', () => {
+  const files = ['quality.config.json', 'api/vitest.config.ts', 'web/angular.json', 'e2e/playwright.config.ts', '.semgrepignore'];
+  assert.equal(sensitiveFiles(files, patterns).length, files.length);
 });

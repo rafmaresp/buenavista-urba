@@ -79,24 +79,33 @@ export function changedLines(files) {
 }
 
 /**
- * Versión "mayor" de un rango semver de npm, para comparar. En 0.x el menor cuenta como mayor
- * (0.3 → 0.4 rompe). Devuelve null si no se entiende (git, url, *, latest...).
+ * Versión "mayor" de un rango de npm, para comparar. Solo entiende `X.Y.Z`, `^X.Y.Z` y `~X.Y.Z`
+ * (con sufijo de prerelease opcional). En 0.x el menor cuenta como mayor (0.3 → 0.4 rompe).
+ * Devuelve null para cualquier otra cosa (>=, <, ||, rangos con guion, x, *, git, url...),
+ * que se trata como sensible.
  */
 export function majorOf(range) {
-  const m = String(range).trim().match(/^[\^~>=<v\s]*(\d+)(?:\.(\d+|x|\*))?/);
+  const m = String(range).trim().match(/^[\^~]?(\d+)\.(\d+)\.\d+(?:-[0-9A-Za-z.-]+)?$/);
   if (!m) return null;
-  if (m[1] === '0') return m[2] && /^\d+$/.test(m[2]) ? `0.${m[2]}` : null;
-  return m[1];
+  return m[1] === '0' ? `0.${m[2]}` : m[1];
 }
 
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+const GUARDED_FIELDS = ['scripts', 'overrides', 'resolutions', 'engines', 'workspaces'];
 
 /**
- * Cambios de dependencias que no son menores ni de parche: salto de mayor, dependencia nueva
- * o versión que no se entiende. Ante la duda, sensible.
+ * Cambios de un package.json que no son menores ni de parche: salto de mayor, dependencia nueva,
+ * versión que no se entiende o cambio en scripts, overrides, resolutions, engines o workspaces.
+ * Ante la duda, sensible.
  */
 export function riskyDependencyChanges(basePkg, headPkg) {
   const out = [];
+  // Campos que cambian qué se instala o qué ejecuta la CI: cualquier cambio es sensible.
+  for (const field of GUARDED_FIELDS) {
+    const before = JSON.stringify((basePkg && basePkg[field]) ?? null);
+    const after = JSON.stringify((headPkg && headPkg[field]) ?? null);
+    if (before !== after) out.push(`cambia \`${field}\``);
+  }
   for (const field of DEP_FIELDS) {
     const before = (basePkg && basePkg[field]) || {};
     const after = (headPkg && headPkg[field]) || {};

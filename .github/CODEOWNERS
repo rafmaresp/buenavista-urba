@@ -40,3 +40,14 @@
 /infra/                                 @rafmaresp
 /api/host.json                          @rafmaresp
 /web/public/staticwebapp.config.json    @rafmaresp
+
+# Lo que fija los guardarraíles de la CI (umbral de cobertura, configuración de tests y de
+# escáneres). Los `scripts` de cada package.json los vigila fusion-lib.mjs.
+/quality.config.json                    @rafmaresp
+/.semgrepignore                         @rafmaresp
+/.trivyignore                           @rafmaresp
+/api/vitest.config.*                    @rafmaresp
+/web/vitest.config.*                    @rafmaresp
+/web/angular.json                       @rafmaresp
+/web/tsconfig.spec.json                 @rafmaresp
+/e2e/playwright.config.*                @rafmaresp
