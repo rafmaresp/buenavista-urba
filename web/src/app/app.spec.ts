@@ -32,4 +32,15 @@ describe('App', () => {
     expect(sesion.dentro()).toBe(false);
     expect(el.querySelector('nav')?.textContent).toContain('Entrar');
   });
+
+  it.each([
+    ['directiva', true],
+    ['comunero', false],
+  ] as const)('con rol %s, el enlace a Usuarios se muestra: %s', (rol, visible) => {
+    TestBed.inject(Sesion).rol.set(rol);
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const enlace = (fixture.nativeElement as HTMLElement).querySelector('nav a[href="/usuarios"]');
+    expect(Boolean(enlace)).toBe(visible);
+  });
 });

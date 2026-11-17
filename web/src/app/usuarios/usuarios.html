@@ -1,0 +1,60 @@
+<section class="usuarios" aria-labelledby="titulo-usuarios">
+  <h2 id="titulo-usuarios">Usuarios</h2>
+
+  @if (!sesion.dentro()) {
+    <p>Para gestionar los usuarios, <a routerLink="/login">entra con tu cuenta</a>.</p>
+  } @else if (sesion.rol() !== 'directiva') {
+    <p>Solo la directiva puede gestionar los usuarios.</p>
+  } @else {
+    <p class="usuarios__nota">Solo puede entrar quien esté en esta lista y activo. Usa el correo de su cuenta de Google.</p>
+
+    <form class="usuarios__alta" (submit)="darDeAlta($event)" aria-label="Dar de alta">
+      <label>
+        Correo de Google
+        <input type="email" name="email" autocomplete="off" required [value]="email()" (input)="entradaEmail($event)" />
+      </label>
+      <label>
+        Rol
+        <select name="rol" [value]="rol()" (change)="entradaRol($event)">
+          <option value="comunero">comunero</option>
+          <option value="directiva">directiva</option>
+        </select>
+      </label>
+      <button type="submit" [disabled]="ocupado()">Dar de alta</button>
+    </form>
+
+    @if (aviso(); as a) {
+      <p [class]="a.tipo === 'error' ? 'usuarios__aviso usuarios__aviso--error' : 'usuarios__aviso'" role="status">{{ a.texto }}</p>
+    }
+
+    @if (usuarios(); as lista) {
+      <ul class="usuarios__lista">
+        @for (u of lista; track u.uid) {
+          <li [class.usuarios__fila--baja]="u.estado === 'baja'">
+            <span class="usuarios__correo">{{ u.email }}{{ u.propio ? ' (tú)' : '' }}</span>
+            <span class="usuarios__detalle">
+              {{ u.estado === 'activo' ? 'activo' : 'de baja' }} · {{ u.vinculado ? 'ha entrado' : 'aún no ha entrado' }}
+            </span>
+            @if (u.propio) {
+              <span class="usuarios__detalle">{{ u.rol }}</span>
+            } @else {
+              <span class="usuarios__acciones">
+                <select [attr.aria-label]="'Rol de ' + u.email" [value]="u.rol" [disabled]="ocupado()" (change)="cambiarRol(u, selector($event))">
+                  <option value="comunero">comunero</option>
+                  <option value="directiva">directiva</option>
+                </select>
+                <button type="button" [disabled]="ocupado()" (click)="cambiarEstado(u)">
+                  {{ u.estado === 'activo' ? 'Dar de baja' : 'Reactivar' }}
+                </button>
+              </span>
+            }
+          </li>
+        } @empty {
+          <li>No hay usuarios.</li>
+        }
+      </ul>
+    } @else if (!aviso()) {
+      <p>Cargando…</p>
+    }
+  }
+</section>

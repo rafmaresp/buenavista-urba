@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { odata } from '@azure/data-tables';
 import { type ClienteAuditoria, auditar, entidadDeAuditoria } from './auditoria';
-import { type AltaUsuario, PARTICION_USUARIOS, type Usuario } from './usuarios';
+import { type AltaUsuario, type CambioUsuario, PARTICION_USUARIOS, type Usuario } from './usuarios';
 
 interface EntidadUsuario {
   rowKey?: string;
@@ -10,6 +10,19 @@ interface EntidadUsuario {
   sub?: string;
   rol?: string;
   estado?: string;
+  baja?: string;
+}
+
+function aUsuario(e: EntidadUsuario): Usuario {
+  return {
+    uid: String(e.rowKey),
+    email: e.email ?? '',
+    sub: e.sub ?? '',
+    rol: e.rol ?? '',
+    estado: e.estado ?? '',
+    baja: e.baja ?? '',
+    etag: e.etag ?? '',
+  };
 }
 
 /** Fila completa que crea un alta (data-model de specs/007-alta-usuarios). */
@@ -24,19 +37,26 @@ export interface EntidadAltaUsuario {
   baja: string;
 }
 
+/** Campos que actualizan vincularSub (sub) y cambiar (rol, estado, baja), siempre con Merge. */
+export interface ActualizacionUsuario {
+  partitionKey: string;
+  rowKey: string;
+  sub?: string;
+  rol?: string;
+  estado?: string;
+  baja?: string;
+}
+
 /**
- * Lo que el repositorio necesita de la tabla Usuarios. El SAS de la app solo permite leer y actualizar
- * (`ru`): crear y borrar solo funcionan con el SAS `rad` de la carga en el despliegue de infra.
+ * Lo que el repositorio necesita de la tabla Usuarios. El SAS de la app es `raud` (spec 010): lee,
+ * da de alta y actualiza; borrar solo sirve para deshacer un alta cuya auditoría falló.
  */
 export interface ClienteTablaUsuarios {
   listEntities<T extends object>(options?: { queryOptions?: { filter?: string; select?: string[] } }): AsyncIterable<T>;
+  getEntity<T extends object>(partitionKey: string, rowKey: string): Promise<T>;
   createEntity(entity: EntidadAltaUsuario): Promise<unknown>;
   deleteEntity(partitionKey: string, rowKey: string): Promise<unknown>;
-  updateEntity(
-    entity: { partitionKey: string; rowKey: string; sub: string },
-    mode: 'Merge',
-    options?: { etag?: string },
-  ): Promise<unknown>;
+  updateEntity(entity: ActualizacionUsuario, mode: 'Merge', options?: { etag?: string }): Promise<unknown>;
 }
 
 /**
@@ -107,17 +127,67 @@ export class RepositorioUsuarios {
     return uid;
   }
 
+  /** Todos los usuarios salvo los suprimidos (la directiva no los ve ni los toca). */
+  async listar(): Promise<Usuario[]> {
+    const todos = await this.buscar(odata`PartitionKey eq ${PARTICION_USUARIOS}`);
+    return todos.filter((u) => u.estado !== 'suprimido');
+  }
+
+  /** Un usuario por uid, o undefined si no existe. */
+  async leer(uid: string): Promise<Usuario | undefined> {
+    try {
+      return aUsuario(await this.usuarios.getEntity<EntidadUsuario>(PARTICION_USUARIOS, uid));
+    } catch (e) {
+      if ((e as { statusCode?: number }).statusCode === 404) return undefined;
+      throw e;
+    }
+  }
+
+  /**
+   * Cambia rol y/o estado (activo ↔ baja) de un usuario no suprimido, con el ETag leído, y lo audita
+   * como `usuario.cambio` con `{rol, estado}` antes y después. Si no hay nada que cambiar, no escribe
+   * ni audita. Si la auditoría falla, restaura rol, estado y fecha de baja y propaga el error.
+   */
+  async cambiar(uid: string, cambio: CambioUsuario, actor: string): Promise<Usuario> {
+    const actual = await this.leer(uid);
+    if (!actual || actual.estado === 'suprimido') throw new UsuarioNoEncontrado();
+    const nuevo = { rol: cambio.rol ?? actual.rol, estado: cambio.estado ?? actual.estado };
+    if (nuevo.rol === actual.rol && nuevo.estado === actual.estado) return actual;
+
+    const entrada = entidadDeAuditoria({
+      actor,
+      accion: 'usuario.cambio',
+      entidad: 'Usuarios',
+      clave: uid,
+      antes: { rol: actual.rol, estado: actual.estado },
+      despues: nuevo,
+    });
+    const clave = { partitionKey: PARTICION_USUARIOS, rowKey: uid };
+    const baja = nuevo.estado === actual.estado ? actual.baja : nuevo.estado === 'baja' ? new Date().toISOString() : '';
+
+    try {
+      await this.usuarios.updateEntity({ ...clave, ...nuevo, baja }, 'Merge', { etag: actual.etag });
+    } catch (e) {
+      if ((e as { statusCode?: number }).statusCode === 412) throw new UsuarioCambiado();
+      throw e;
+    }
+    try {
+      await auditar(this.auditoria, entrada);
+    } catch (errorAuditoria) {
+      try {
+        await this.usuarios.updateEntity({ ...clave, rol: actual.rol, estado: actual.estado, baja: actual.baja }, 'Merge');
+      } catch {
+        throw new CambioUsuarioSinAuditar(uid);
+      }
+      throw errorAuditoria;
+    }
+    return { ...actual, ...nuevo, baja };
+  }
+
   private async buscar(filter: string): Promise<Usuario[]> {
     const encontrados: Usuario[] = [];
     for await (const e of this.usuarios.listEntities<EntidadUsuario>({ queryOptions: { filter } })) {
-      encontrados.push({
-        uid: String(e.rowKey),
-        email: e.email ?? '',
-        sub: e.sub ?? '',
-        rol: e.rol ?? '',
-        estado: e.estado ?? '',
-        etag: e.etag ?? '',
-      });
+      encontrados.push(aUsuario(e));
     }
     return encontrados;
   }
@@ -164,5 +234,29 @@ export class AltaUsuarioSinAuditar extends Error {
   constructor(uid: string) {
     super(`El usuario ${uid} se dio de alta sin auditar y no se pudo deshacer: revísalo a mano`);
     this.name = 'AltaUsuarioSinAuditar';
+  }
+}
+
+/** El usuario no existe o está suprimido. */
+export class UsuarioNoEncontrado extends Error {
+  constructor() {
+    super('Usuario no encontrado');
+    this.name = 'UsuarioNoEncontrado';
+  }
+}
+
+/** Otra escritura cambió el usuario entre la lectura y la escritura (ETag). */
+export class UsuarioCambiado extends Error {
+  constructor() {
+    super('El usuario cambió entretanto');
+    this.name = 'UsuarioCambiado';
+  }
+}
+
+/** La auditoría de un cambio falló y no se pudo restaurar: hay que revisarlo a mano. */
+export class CambioUsuarioSinAuditar extends Error {
+  constructor(uid: string) {
+    super(`El usuario ${uid} cambió sin auditar y no se pudo restaurar: revísalo a mano`);
+    this.name = 'CambioUsuarioSinAuditar';
   }
 }

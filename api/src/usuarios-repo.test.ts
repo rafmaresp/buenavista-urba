@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { UID_ANA, auditoriaDoble, filaAna, tablaUsuarios } from './pruebas/usuarios-dobles';
-import { AltaUsuarioSinAuditar, RepositorioUsuarios, VinculacionSinAuditar } from './usuarios-repo';
+import { UID_ANA, UID_BEA, auditoriaDoble, filaAna, tablaUsuarios } from './pruebas/usuarios-dobles';
+import { AltaUsuarioSinAuditar, RepositorioUsuarios, UsuarioNoEncontrado, VinculacionSinAuditar } from './usuarios-repo';
 
 function preparar(opciones: { auditoriaFalla?: boolean; deshacerFalla?: boolean } = {}) {
   const filas = [filaAna()];
@@ -113,5 +113,33 @@ describe('RepositorioUsuarios: altas (007-alta-usuarios)', () => {
     const error = await repo.crear({ email: 'bea@example.com', rol: 'comunero' }, 'sistema:carga').catch((e: Error) => e);
     expect(error).toBeInstanceOf(AltaUsuarioSinAuditar);
     expect((error as Error).message).not.toContain('@');
+  });
+});
+
+describe('RepositorioUsuarios: gestión (010-gestion-usuarios)', () => {
+  it('leer devuelve undefined si no existe y propaga otros errores', async () => {
+    const { repo } = preparar();
+    expect(await repo.leer('5d4c3b2a-1908-4f7e-8d6c-5b4a39281706')).toBeUndefined();
+    const rota = new RepositorioUsuarios(tablaUsuarios([filaAna()], { lecturaFalla: true }).cliente, auditoriaDoble([]));
+    await expect(rota.leer(UID_ANA)).rejects.toMatchObject({ statusCode: 500 });
+  });
+
+  it('cambiar escribe con el ETag leído y solo rol, estado y baja', async () => {
+    const { repo, cliente } = preparar();
+    const cambiado = await repo.cambiar(UID_ANA, { rol: 'directiva' }, UID_BEA);
+    expect(cambiado).toMatchObject({ rol: 'directiva', estado: 'activo', baja: '' });
+    expect(cliente.updateEntity).toHaveBeenCalledWith(
+      { partitionKey: 'usuario', rowKey: UID_ANA, rol: 'directiva', estado: 'activo', baja: '' },
+      'Merge',
+      { etag: 'W/"1"' },
+    );
+  });
+
+  it('cambiar un usuario suprimido lanza UsuarioNoEncontrado sin escribir', async () => {
+    const filas = [filaAna({ estado: 'suprimido', email: '' })];
+    const { cliente, orden } = tablaUsuarios(filas);
+    const repo = new RepositorioUsuarios(cliente, auditoriaDoble(orden));
+    await expect(repo.cambiar(UID_ANA, { estado: 'activo' }, UID_BEA)).rejects.toBeInstanceOf(UsuarioNoEncontrado);
+    expect(orden).toEqual([]);
   });
 });

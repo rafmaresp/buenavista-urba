@@ -119,10 +119,11 @@ var auditoriaSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var auditoriaSas = contains(auditoriaSasToken, 'tn=') ? auditoriaSasToken : '${auditoriaSasToken}&tn=${tablaAuditoria.name}'
 
-// Usuarios: la app lee y actualiza (fija el sub en el primer login); no da de alta ni borra usuarios.
+// Usuarios: la app lee, da de alta, actualiza (sub en el primer login; rol y estado por la directiva,
+// spec 010) y borra solo para deshacer un alta cuya auditoría falló.
 var usuariosSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaUsuarios.name)}'
-  signedPermission: 'ru'
+  signedPermission: 'raud'
   signedProtocol: 'https'
   signedExpiry: sasExpiry
   keyToSign: sasKey
