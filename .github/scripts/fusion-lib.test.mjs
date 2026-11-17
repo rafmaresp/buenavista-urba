@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   changedLines,
-  codeownersPatternToRegex,
   evaluateChecks,
   majorOf,
+  matchesCodeowners,
   parseCodeowners,
   REQUIRED_CHECKS,
   riskyDependencyChanges,
@@ -47,10 +47,12 @@ test('las rutas normales no son sensibles', () => {
 });
 
 test('un patrón anclado no casa fuera de la raíz', () => {
-  assert.ok(codeownersPatternToRegex('/AGENTS.md').test('AGENTS.md'));
-  assert.ok(!codeownersPatternToRegex('/AGENTS.md').test('docs/AGENTS.md'));
-  assert.ok(codeownersPatternToRegex('/data/').test('data/x/y.csv'));
-  assert.ok(!codeownersPatternToRegex('/data/').test('web/data/x.csv'));
+  assert.ok(matchesCodeowners('/AGENTS.md', 'AGENTS.md'));
+  assert.ok(!matchesCodeowners('/AGENTS.md', 'docs/AGENTS.md'));
+  assert.ok(matchesCodeowners('/data/', 'data/x/y.csv'));
+  assert.ok(!matchesCodeowners('/data/', 'web/data/x.csv'));
+  assert.ok(matchesCodeowners('/api/src/**/auth*', 'api/src/auth.ts'));
+  assert.ok(!matchesCodeowners('/api/src/**/auth*', 'api/src/lib/oauthless.ts'));
 });
 
 test('las líneas cambiadas no cuentan lockfiles', () => {

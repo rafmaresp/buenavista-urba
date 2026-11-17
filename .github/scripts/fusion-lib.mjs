@@ -19,38 +19,37 @@ export const OPT_OUT_LABEL = 'no-fusionar';
 
 const LOCKFILES = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml)$/;
 
-function escapeRegex(s) {
-  return s.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+/** `*` y `?` dentro de un segmento de ruta, sin RegExp. */
+function matchSegment(pat, seg) {
+  if (pat === '') return seg === '';
+  if (pat[0] === '*') {
+    for (let i = 0; i <= seg.length; i++) if (matchSegment(pat.slice(1), seg.slice(i))) return true;
+    return false;
+  }
+  if (seg === '') return false;
+  return (pat[0] === '?' || pat[0] === seg[0]) && matchSegment(pat.slice(1), seg.slice(1));
 }
 
-/** Convierte un patrón de CODEOWNERS (sintaxis tipo .gitignore) en RegExp sobre rutas del repo. */
-export function codeownersPatternToRegex(pattern) {
+/** Segmentos del patrón contra segmentos de la ruta; `**` casa con cero o más segmentos. */
+function matchSegments(pats, segs) {
+  if (pats.length === 0) return true; // un directorio cubre todo lo que hay debajo
+  if (pats[0] === '**') {
+    for (let i = 0; i <= segs.length; i++) if (matchSegments(pats.slice(1), segs.slice(i))) return true;
+    return false;
+  }
+  return segs.length > 0 && matchSegment(pats[0], segs[0]) && matchSegments(pats.slice(1), segs.slice(1));
+}
+
+/**
+ * ¿La ruta casa con un patrón de CODEOWNERS (sintaxis tipo .gitignore)? Anclado a la raíz si
+ * empieza por "/" o tiene "/" en medio; si no, casa a cualquier profundidad.
+ */
+export function matchesCodeowners(pattern, path) {
   let p = pattern.trim();
-  // Anclado a la raíz si empieza por "/" o tiene "/" en medio (como .gitignore).
   const anchored = p.startsWith('/') || p.replace(/\/$/, '').includes('/');
   p = p.replace(/^\//, '').replace(/\/$/, '');
-  let body = '';
-  for (let i = 0; i < p.length; i++) {
-    const c = p[i];
-    if (c === '*' && p[i + 1] === '*') {
-      if (p[i + 2] === '/') {
-        body += '(?:.*/)?';
-        i += 2;
-      } else {
-        body += '.*';
-        i += 1;
-      }
-    } else if (c === '*') {
-      body += '[^/]*';
-    } else if (c === '?') {
-      body += '[^/]';
-    } else {
-      body += escapeRegex(c);
-    }
-  }
-  const prefix = anchored ? '' : '(?:.*/)?';
-  // Un patrón que casa con un directorio cubre todo lo que hay debajo.
-  return new RegExp(`^${prefix}${body}(?:/.*)?$`);
+  const pats = (anchored ? [] : ['**']).concat(p.split('/'));
+  return matchSegments(pats, path.split('/'));
 }
 
 /** Lee CODEOWNERS y devuelve los patrones (primer campo de cada línea útil). */
@@ -64,11 +63,10 @@ export function parseCodeowners(text) {
 
 /** Rutas cambiadas que caen en zona sensible según CODEOWNERS. */
 export function sensitiveFiles(files, patterns) {
-  const regexes = patterns.map((p) => ({ p, re: codeownersPatternToRegex(p) }));
   const out = [];
   for (const f of files) {
-    const hit = regexes.find(({ re }) => re.test(f));
-    if (hit) out.push(`${f} (${hit.p})`);
+    const hit = patterns.find((p) => matchesCodeowners(p, f));
+    if (hit) out.push(`${f} (${hit})`);
   }
   return out;
 }
