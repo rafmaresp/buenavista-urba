@@ -21,7 +21,7 @@ const MENSAJES: Record<MotivoErrorUsuarios, string> = {
   'no-disponible': 'No se ha podido completar. Inténtalo dentro de un rato.',
 };
 
-/** Ruta /usuarios (spec 009-gestion-usuarios): la directiva gestiona la lista cerrada. */
+/** Ruta /usuarios (spec 010-gestion-usuarios): la directiva gestiona la lista cerrada. */
 @Component({
   selector: 'app-usuarios',
   imports: [RouterLink],

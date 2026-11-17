@@ -5,7 +5,7 @@ description: "Tareas de la gestión de usuarios por la directiva"
 
 # Tasks: Gestión de usuarios por la directiva
 
-**Input**: Design documents from `/specs/009-gestion-usuarios/`
+**Input**: Design documents from `/specs/010-gestion-usuarios/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api-usuarios.md
 

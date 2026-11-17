@@ -1,4 +1,4 @@
-/** Cliente de /api/usuarios (contrato en specs/009-gestion-usuarios/contracts/api-usuarios.md). */
+/** Cliente de /api/usuarios (contrato en specs/010-gestion-usuarios/contracts/api-usuarios.md). */
 
 export type RolUsuario = 'comunero' | 'directiva';
 export type EstadoUsuario = 'activo' | 'baja';

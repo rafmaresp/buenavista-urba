@@ -91,7 +91,7 @@ export function parsearAltas(texto: string): AltaUsuario[] {
   return altas;
 }
 
-// ---------- Gestión por la directiva (specs/009-gestion-usuarios) ----------
+// ---------- Gestión por la directiva (specs/010-gestion-usuarios) ----------
 
 /** Estados que la directiva puede poner: `suprimido` es solo de los devs. */
 export const ESTADOS_GESTION = ['activo', 'baja'] as const;

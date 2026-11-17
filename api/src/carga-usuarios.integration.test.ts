@@ -41,5 +41,5 @@ describe.runIf(hayAzuriteConClave)('alta de usuarios (Azurite)', () => {
     });
   });
 
-  // La app ya puede dar de alta (SAS raud, spec 009): lo prueba usuarios.integration.test.ts.
+  // La app ya puede dar de alta (SAS raud, spec 010): lo prueba usuarios.integration.test.ts.
 });

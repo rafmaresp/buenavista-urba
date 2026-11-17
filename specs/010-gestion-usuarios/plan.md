@@ -2,7 +2,7 @@
 
 **Branch**: `claude/project-thread-arof49` | **Date**: 2026-11-17 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/009-gestion-usuarios/spec.md`
+**Input**: Feature specification from `/specs/010-gestion-usuarios/spec.md`
 
 ## Summary
 
@@ -48,7 +48,7 @@ Re-check tras el diseño: sin cambios. El paso de `ru` a `raud` amplía permisos
 ### Documentation (this feature)
 
 ```text
-specs/009-gestion-usuarios/
+specs/010-gestion-usuarios/
 ├── plan.md
 ├── research.md
 ├── data-model.md

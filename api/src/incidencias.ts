@@ -33,3 +33,38 @@ export function validarPeticion(cuerpo: unknown): PeticionAviso | undefined {
   if ([...texto].length > MAX_COMENTARIO) return undefined;
   return { farola, comentario: texto };
 }
+
+// ---------- Cambio de estado (spec 009-cambiar-estado-incidencia) ----------
+
+/** Ciclo de estados (docs/producto.md sec. 4), en orden. Solo se avanza; Completado es final. */
+export const ESTADOS = [ESTADO_INICIAL, 'Recibido', 'Profesional notificado', ESTADO_COMPLETADO] as const;
+export type EstadoIncidencia = (typeof ESTADOS)[number];
+
+export function esEstado(valor: unknown): valor is EstadoIncidencia {
+  return typeof valor === 'string' && (ESTADOS as readonly string[]).includes(valor);
+}
+
+/** true si `destino` va después de `actual` (se pueden saltar estados; nunca hacia atrás ni al mismo). */
+export function esPosterior(actual: string, destino: string): boolean {
+  const desde = (ESTADOS as readonly string[]).indexOf(actual);
+  const hasta = (ESTADOS as readonly string[]).indexOf(destino);
+  return desde >= 0 && hasta > desde;
+}
+
+export interface PeticionCambioEstado {
+  id: string;
+  farola: string;
+  estado: EstadoIncidencia;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Valida id (ruta) y cuerpo de PUT /api/incidencias/{id}. undefined si no es válido (campos de más se ignoran). */
+export function validarCambio(id: string | undefined, cuerpo: unknown): PeticionCambioEstado | undefined {
+  if (!id || !UUID.test(id)) return undefined;
+  if (typeof cuerpo !== 'object' || cuerpo === null || Array.isArray(cuerpo)) return undefined;
+  const { farola, estado } = cuerpo as Record<string, unknown>;
+  if (typeof farola !== 'string' || !ID_FAROLA.test(farola)) return undefined;
+  if (!esEstado(estado)) return undefined;
+  return { id, farola, estado };
+}

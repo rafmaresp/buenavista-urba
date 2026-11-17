@@ -7,7 +7,7 @@ import { type DepsGestionUsuarios, respuestaAlta, respuestaCambiar, respuestaLis
 import { RepositorioUsuarios } from './usuarios-repo';
 import { respuestaYo } from './yo';
 
-// Gestión de usuarios por la directiva (specs/009-gestion-usuarios). Ana es quien llama (directiva
+// Gestión de usuarios por la directiva (specs/010-gestion-usuarios). Ana es quien llama (directiva
 // salvo que se diga otra cosa); Bea es otra vecina. Identidad y gestión leen la misma tabla doble.
 
 const CLIENT_ID = 'cliente-prueba.apps.googleusercontent.com';

@@ -116,7 +116,7 @@ describe('RepositorioUsuarios: altas (007-alta-usuarios)', () => {
   });
 });
 
-describe('RepositorioUsuarios: gestión (009-gestion-usuarios)', () => {
+describe('RepositorioUsuarios: gestión (010-gestion-usuarios)', () => {
   it('leer devuelve undefined si no existe y propaga otros errores', async () => {
     const { repo } = preparar();
     expect(await repo.leer('5d4c3b2a-1908-4f7e-8d6c-5b4a39281706')).toBeUndefined();

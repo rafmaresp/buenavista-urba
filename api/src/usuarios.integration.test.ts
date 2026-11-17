@@ -44,7 +44,7 @@ describe('Usuarios (Azurite)', () => {
   // Con `d`, Azurite deja borrar la tabla con un SAS de servicio; Azure no permite operaciones de tabla con
   // un SAS de servicio, así que esa garantía no se puede probar aquí (antes la cubría el SAS `ru`).
 
-  it.runIf(hayAzuriteConClave)('la directiva da de alta, de baja y reactiva con el SAS de la app, todo auditado sin correo (009)', async () => {
+  it.runIf(hayAzuriteConClave)('la directiva da de alta, de baja y reactiva con el SAS de la app, todo auditado sin correo (010)', async () => {
     await conTablasTemporales(['Usuarios', 'Auditoria'], async ([usuarios, auditoria]) => {
       const repo = new RepositorioUsuarios(clienteConSas(usuarios!, SAS_APP), clienteConSas(auditoria!, { query: true, add: true }));
       const uid = await repo.crear({ email: 'nueva@example.com', rol: 'comunero' }, UID);

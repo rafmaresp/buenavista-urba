@@ -48,7 +48,7 @@ export interface ActualizacionUsuario {
 }
 
 /**
- * Lo que el repositorio necesita de la tabla Usuarios. El SAS de la app es `raud` (spec 009): lee,
+ * Lo que el repositorio necesita de la tabla Usuarios. El SAS de la app es `raud` (spec 010): lee,
  * da de alta y actualiza; borrar solo sirve para deshacer un alta cuya auditoría falló.
  */
 export interface ClienteTablaUsuarios {

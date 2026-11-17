@@ -10,7 +10,7 @@ import {
 } from './usuarios-repo';
 
 /**
- * Gestión de la lista cerrada por la directiva (specs/009-gestion-usuarios). Orden en cada ruta:
+ * Gestión de la lista cerrada por la directiva (specs/010-gestion-usuarios). Orden en cada ruta:
  * identidad → rol directiva → petición → repositorio. Ni el cuerpo ni los correos se registran.
  */
 

@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { EntidadAuditoria } from './auditoria';
-import { CANDADO, IncidenciaSinAuditar, RepositorioIncidencias, YaAbierta } from './incidencias-repo';
-import { tablaIncidencias } from './pruebas/incidencias-dobles';
+import {
+  CANDADO,
+  HaCambiado,
+  IncidenciaSinAuditar,
+  NoEncontrada,
+  RepositorioIncidencias,
+  TransicionNoValida,
+  YaAbierta,
+} from './incidencias-repo';
+import { type OpcionesTablaIncidencias, tablaIncidencias } from './pruebas/incidencias-dobles';
 import { UID_ANA, UID_BEA } from './pruebas/usuarios-dobles';
 
 const AHORA = new Date('2026-11-15T19:30:00.000Z');
 
-function preparar(opciones: { auditoriaFalla?: boolean; deshacerFalla?: boolean; lecturaFalla?: boolean } = {}) {
+function preparar(opciones: { auditoriaFalla?: boolean } & OpcionesTablaIncidencias = {}) {
   const tabla = tablaIncidencias(opciones);
   const entradas: EntidadAuditoria[] = [];
   const auditoria = {
@@ -137,5 +145,129 @@ describe('RepositorioIncidencias.abiertas() (US3)', () => {
   it('propaga el error de lectura', async () => {
     const { repo } = preparar({ lecturaFalla: true });
     await expect(repo.abiertas()).rejects.toMatchObject({ statusCode: 500 });
+  });
+});
+
+describe('RepositorioIncidencias.cambiarEstado() (spec 009)', () => {
+  async function conIncidencia(opciones: Parameters<typeof preparar>[0] = {}) {
+    const p = preparar(opciones);
+    // El alta se hace con otra instancia sin fallos para partir de una incidencia abierta en Nuevo.
+    const tablaSinFallos = new RepositorioIncidencias(p.cliente, { createEntity: async () => undefined }, () => AHORA);
+    const creada = await tablaSinFallos.crear({ farola: 'F07', comentario: 'Texto privado', autor: UID_ANA });
+    p.orden.length = 0;
+    return { ...p, creada };
+  }
+
+  it('avanza el estado y audita solo el estado antes y después, con el uid de la directiva (US1)', async () => {
+    const { repo, creada, filas, entradas, orden } = await conIncidencia();
+    const r = await repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Recibido', actor: UID_BEA });
+
+    expect(r).toEqual({ ...creada, estado: 'Recibido' });
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Recibido', autor: UID_ANA, comentario: 'Texto privado' });
+    expect(filas.has(`F07|${CANDADO}`)).toBe(true);
+    expect(orden).toEqual(['estado Recibido', 'auditar']);
+    expect(entradas).toHaveLength(1);
+    expect(entradas[0]).toMatchObject({ actor: UID_BEA, accion: 'incidencia.estado', entidad: 'Incidencias', clave: `F07/${creada.id}` });
+    expect(JSON.parse(entradas[0]!.antes)).toEqual({ estado: 'Nuevo' });
+    expect(JSON.parse(entradas[0]!.despues)).toEqual({ estado: 'Recibido' });
+    expect(JSON.stringify(entradas[0])).not.toContain('Texto privado');
+    expect(JSON.stringify(entradas[0])).not.toContain(UID_ANA);
+  });
+
+  it('se pueden saltar estados hacia delante', async () => {
+    const { repo, creada } = await conIncidencia();
+    await expect(
+      repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Profesional notificado', actor: UID_BEA }),
+    ).resolves.toMatchObject({ estado: 'Profesional notificado' });
+  });
+
+  it('rechaza volver atrás o repetir el estado sin escribir ni auditar', async () => {
+    const { repo, creada, entradas, cliente } = await conIncidencia();
+    await repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Profesional notificado', actor: UID_BEA });
+    cliente.updateEntity.mockClear();
+    for (const estado of ['Nuevo', 'Recibido', 'Profesional notificado'] as const) {
+      const error = await repo.cambiarEstado({ farola: 'F07', id: creada.id, estado, actor: UID_BEA }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(TransicionNoValida);
+      expect((error as TransicionNoValida).actual).toMatchObject({ estado: 'Profesional notificado' });
+    }
+    expect(cliente.updateEntity).not.toHaveBeenCalled();
+    expect(entradas).toHaveLength(1);
+  });
+
+  it('solo la incidencia del candado es modificable: otra id, otra farola o sin incidencia → NoEncontrada', async () => {
+    const { repo, creada } = await conIncidencia();
+    const otra = '11111111-2222-4333-8444-555555555555';
+    await expect(repo.cambiarEstado({ farola: 'F07', id: otra, estado: 'Recibido', actor: UID_BEA })).rejects.toBeInstanceOf(NoEncontrada);
+    await expect(repo.cambiarEstado({ farola: 'F01', id: creada.id, estado: 'Recibido', actor: UID_BEA })).rejects.toBeInstanceOf(
+      NoEncontrada,
+    );
+  });
+
+  it('si otro cambio gana (ETag desfasado) no lo pisa y devuelve el estado actual', async () => {
+    const { repo, creada, filas, entradas } = await conIncidencia({ carreraA: 'Recibido' });
+    const error = await repo
+      .cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Completado', actor: UID_BEA })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(HaCambiado);
+    expect((error as HaCambiado).actual).toEqual({ ...creada, estado: 'Recibido' });
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Recibido' });
+    expect(filas.has(`F07|${CANDADO}`)).toBe(true);
+    expect(entradas).toHaveLength(0);
+  });
+
+  it('si la auditoría falla restaura el estado anterior y propaga el error (US1)', async () => {
+    const { repo, creada, filas, orden } = await conIncidencia({ auditoriaFalla: true });
+    await expect(repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Recibido', actor: UID_BEA })).rejects.toThrow(
+      'Auditoria no disponible',
+    );
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Nuevo' });
+    expect(orden).toEqual(['estado Recibido', 'auditar', 'estado Nuevo']);
+  });
+
+  it('si restaurar también falla lanza IncidenciaSinAuditar', async () => {
+    const { repo, creada } = await conIncidencia({ auditoriaFalla: true, actualizarFallaEn: 2 });
+    await expect(
+      repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Recibido', actor: UID_BEA }),
+    ).rejects.toBeInstanceOf(IncidenciaSinAuditar);
+  });
+
+  it('completar borra el candado: deja de estar abierta y la farola admite otro aviso (US2)', async () => {
+    const { repo, creada, filas, orden, entradas } = await conIncidencia();
+    await repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Completado', actor: UID_BEA });
+
+    expect(orden).toEqual(['estado Completado', 'borrar candado', 'auditar']);
+    expect(filas.has(`F07|${CANDADO}`)).toBe(false);
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Completado' });
+    expect(await repo.abiertas()).toEqual([]);
+    expect(await repo.abiertaDe('F07')).toBeUndefined();
+    expect(JSON.parse(entradas[0]!.despues)).toEqual({ estado: 'Completado' });
+
+    const nueva = await repo.crear({ farola: 'F07', comentario: '', autor: UID_ANA });
+    expect(nueva.id).not.toBe(creada.id);
+    expect(await repo.abiertaDe('F07')).toEqual(nueva);
+    // Una completada no se reabre: ya no es la del candado.
+    await expect(repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Completado', actor: UID_BEA })).rejects.toBeInstanceOf(
+      NoEncontrada,
+    );
+  });
+
+  it('si la auditoría falla al completar recrea el candado y restaura el estado (US2)', async () => {
+    const { repo, creada, filas, orden } = await conIncidencia({ auditoriaFalla: true });
+    await expect(repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Completado', actor: UID_BEA })).rejects.toThrow();
+
+    expect(orden).toEqual(['estado Completado', 'borrar candado', 'auditar', 'crear candado', 'estado Nuevo']);
+    expect(filas.get(`F07|${CANDADO}`)).toMatchObject({ incidencia: creada.id });
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Nuevo' });
+    await expect(repo.abiertaDe('F07')).resolves.toEqual(creada);
+  });
+
+  it('si borrar el candado falla restaura el estado y no audita', async () => {
+    const { repo, creada, filas, entradas } = await conIncidencia({ borrarCandadoFalla: true });
+    await expect(
+      repo.cambiarEstado({ farola: 'F07', id: creada.id, estado: 'Completado', actor: UID_BEA }),
+    ).rejects.toMatchObject({ statusCode: 500 });
+    expect(filas.get(`F07|${creada.id}`)).toMatchObject({ estado: 'Nuevo' });
+    expect(filas.has(`F07|${CANDADO}`)).toBe(true);
+    expect(entradas).toHaveLength(0);
   });
 });

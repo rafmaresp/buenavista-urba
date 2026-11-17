@@ -9,7 +9,7 @@
 ## R2. Permisos del SAS de Usuarios: `raud`
 
 - **Decision**: la app pasa de `ru` a `raud`.
-- **Rationale**: `a` para el alta; `d` solo para deshacer un alta cuya auditoría falle, el mismo patrón que `Incidencias` (`rad`) y la carga (`rad`). Con `u` la app ya podía cambiar cualquier fila (rol incluido), así que `d` no amplía de forma relevante lo que una credencial filtrada permite.
+- **Rationale**: `a` para el alta; `d` solo para deshacer un alta cuya auditoría falle, el mismo patrón que la carga (`rad`) e `Incidencias`. Con `u` la app ya podía cambiar cualquier fila (rol incluido), así que `d` no amplía de forma relevante lo que una credencial filtrada permite.
 - **Alternatives considered**: `rau` y deshacer marcando la fila como suprimida (deja basura y rompe "un alta sin auditoría no queda"); auditar antes de escribir (una entrada de auditoría sin cambio real, y la auditoría es append-only).
 
 ## R3. Concurrencia

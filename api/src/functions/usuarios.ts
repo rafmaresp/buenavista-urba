@@ -4,7 +4,7 @@ import { tablaClient } from '../tablas';
 import { type DepsGestionUsuarios, respuestaAlta, respuestaCambiar, respuestaListar } from '../usuarios-http';
 import { RepositorioUsuarios } from '../usuarios-repo';
 
-// Gestión de la lista cerrada (specs/009-gestion-usuarios): no pública, solo directiva; identifica en cada petición.
+// Gestión de la lista cerrada (specs/010-gestion-usuarios): no pública, solo directiva; identifica en cada petición.
 function deps(registrarError: (mensaje: string) => void): DepsGestionUsuarios {
   return {
     usuarios: () => new RepositorioUsuarios(tablaClient('Usuarios'), tablaClient('Auditoria')),

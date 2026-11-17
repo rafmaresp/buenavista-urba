@@ -48,3 +48,23 @@ test('la API real exige identidad para avisar', async ({ request }) => {
   expect(r.status()).toBe(401);
   expect(await r.json()).toEqual({ error: 'no-autenticado' });
 });
+
+// Cambiar el estado (specs/009-cambiar-estado-incidencia): solo directiva. Sin usuarios de prueba con
+// sesión, aquí se prueba que la API real exige identidad y que sin sesión no hay selector; el resto lo
+// cubren api/ (unitarias y Azurite) y web/ (ficha con rol directiva).
+test('sin sesión la ficha con incidencia no ofrece cambiar el estado', async ({ page }) => {
+  await simularApiIncidencias(page, [{ id: 'a1', farola: 'F07', estado: 'Nuevo', creada: '2026-11-15T19:30:00.000Z' }]);
+  await page.goto('/');
+  await page.getByTitle('Farola F07').click();
+  const ficha = page.locator('.leaflet-popup-content .ficha');
+  await expect(ficha).toContainText('Incidencia abierta: Nuevo');
+  await expect(ficha.locator('select')).toHaveCount(0);
+});
+
+test('la API real exige identidad para cambiar el estado', async ({ request }) => {
+  const r = await request.put('/api/incidencias/0b9c4f3e-6a1d-4c8e-9f2a-1d3e5b7c9a01', {
+    data: { farola: 'F07', estado: 'Recibido' },
+  });
+  expect(r.status()).toBe(401);
+  expect(await r.json()).toEqual({ error: 'no-autenticado' });
+});

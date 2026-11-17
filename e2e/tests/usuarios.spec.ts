@@ -1,7 +1,7 @@
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { entrarComoDirectiva, simularApiFarolas, simularApiIncidencias, teselasSinRed } from './farolas.fixture';
 
-// Gestión de usuarios (specs/009-gestion-usuarios). La sesión de directiva y /api/usuarios se
+// Gestión de usuarios (specs/010-gestion-usuarios). La sesión de directiva y /api/usuarios se
 // simulan (los usuarios de prueba con sesión siguen pendientes); la API real la cubren api/ y Azurite.
 
 interface Usuario {

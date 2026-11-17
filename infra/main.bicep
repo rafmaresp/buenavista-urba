@@ -120,7 +120,7 @@ var auditoriaSasToken = storage.listServiceSas('2023-05-01', {
 var auditoriaSas = contains(auditoriaSasToken, 'tn=') ? auditoriaSasToken : '${auditoriaSasToken}&tn=${tablaAuditoria.name}'
 
 // Usuarios: la app lee, da de alta, actualiza (sub en el primer login; rol y estado por la directiva,
-// spec 009) y borra solo para deshacer un alta cuya auditoría falló.
+// spec 010) y borra solo para deshacer un alta cuya auditoría falló.
 var usuariosSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaUsuarios.name)}'
   signedPermission: 'raud'
@@ -130,11 +130,11 @@ var usuariosSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var usuariosSas = contains(usuariosSasToken, 'tn=') ? usuariosSasToken : '${usuariosSasToken}&tn=${tablaUsuarios.name}'
 
-// Incidencias: la app lee y da de alta; borrar solo para deshacer un alta cuya auditoría falló.
-// Sin actualizar hasta el cambio de gestión de estados.
+// Incidencias: la app lee, da de alta y actualiza el estado (spec 009, solo directiva); borra el
+// candado al completar y para deshacer una escritura cuya auditoría falló.
 var incidenciasSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaIncidencias.name)}'
-  signedPermission: 'rad'
+  signedPermission: 'raud'
   signedProtocol: 'https'
   signedExpiry: sasExpiry
   keyToSign: sasKey
