@@ -1,7 +1,10 @@
 <header class="cabecera">
-  <h1>{{ title() }}</h1>
+  <h1><a routerLink="/">{{ title() }}</a></h1>
   <nav class="sesion">
     @if (sesion.dentro()) {
+      @if (sesion.rol() === 'directiva') {
+        <a routerLink="/usuarios">Usuarios</a> ·
+      }
       <span>{{ sesion.rol() }}</span> · <button type="button" (click)="sesion.salir()">Salir</button>
     } @else {
       <a routerLink="/login">Entrar</a>

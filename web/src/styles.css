@@ -60,7 +60,8 @@ app-inicio {
 
 /* Páginas de texto (login y privacidad): ocupan el resto y hacen scroll. */
 app-login,
-app-privacidad {
+app-privacidad,
+app-usuarios {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -276,4 +277,78 @@ app-mapa-farolas {
   border: 2px solid var(--error);
   color: var(--error);
   font-weight: 600;
+}
+
+/* Gestión de usuarios (spec 009-gestion-usuarios). */
+.cabecera h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.usuarios__alta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.usuarios__alta label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.usuarios__alta input {
+  min-width: 16rem;
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.usuarios__aviso {
+  padding: 6px 8px;
+  border-left: 4px solid var(--azul);
+  background: #eef2fa;
+}
+
+.usuarios__aviso--error {
+  border-color: var(--error);
+  background: #fbeeed;
+}
+
+.usuarios__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.usuarios__lista li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #dde2ec;
+}
+
+.usuarios__correo {
+  flex: 1 1 14rem;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.usuarios__detalle {
+  color: #4a5368;
+  font-size: 0.9rem;
+}
+
+.usuarios__acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.usuarios__fila--baja .usuarios__correo {
+  color: #6b7385;
+  text-decoration: line-through;
 }
