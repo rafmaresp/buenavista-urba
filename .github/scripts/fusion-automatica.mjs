@@ -11,8 +11,10 @@ import {
   evaluateChecks,
   MAX_LINES,
   OPT_OUT_LABEL,
+  isNpmLockfile,
   parseCodeowners,
   riskyDependencyChanges,
+  riskyLockfileChanges,
   sensitiveFiles,
 } from './fusion-lib.mjs';
 
@@ -57,14 +59,15 @@ async function paginate(path, key) {
   }
 }
 
-async function packageJsonAt(path, ref) {
-  try {
-    const data = await gh(`/repos/${REPO}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}?ref=${ref}`);
-    return JSON.parse(Buffer.from(data.content, 'base64').toString('utf8'));
-  } catch (e) {
-    if (e.status === 404) return null;
-    throw e;
-  }
+/** JSON de un archivo del repo en un commit (null si no existe). En crudo: vale para lockfiles grandes. */
+async function jsonAt(path, ref) {
+  const url = `${API}/repos/${REPO}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}?ref=${ref}`;
+  const res = await fetch(url, {
+    headers: { authorization: `Bearer ${GITHUB_TOKEN}`, accept: 'application/vnd.github.raw+json', 'x-github-api-version': '2022-11-28' },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET ${path}@${ref}: ${res.status}`);
+  return JSON.parse(await res.text());
 }
 
 /** Crea o actualiza un único comentario del workflow en el PR. */
@@ -115,9 +118,20 @@ async function main() {
     const patterns = parseCodeowners(readFileSync(new URL('../CODEOWNERS', import.meta.url), 'utf8'));
     const reasons = sensitiveFiles(names, patterns).map((f) => `zona sensible: \`${f}\``);
     for (const f of files.filter((f) => /(^|\/)package\.json$/.test(f.filename))) {
-      const before = await packageJsonAt(f.previous_filename ?? f.filename, pr.base.sha);
-      const after = await packageJsonAt(f.filename, HEAD_SHA);
+      const before = await jsonAt(f.previous_filename ?? f.filename, pr.base.sha);
+      const after = await jsonAt(f.filename, HEAD_SHA);
       for (const d of riskyDependencyChanges(before, after)) reasons.push(`dependencia en \`${f.filename}\`: ${d}`);
+    }
+    for (const f of files.filter((f) => isNpmLockfile(f.filename))) {
+      const before = await jsonAt(f.previous_filename ?? f.filename, pr.base.sha);
+      const after = await jsonAt(f.filename, HEAD_SHA);
+      const risks = riskyLockfileChanges(before, after);
+      risks.slice(0, 5).forEach((d) => reasons.push(`lockfile \`${f.filename}\`: ${d}`));
+      if (risks.length > 5) reasons.push(`lockfile \`${f.filename}\`: … y ${risks.length - 5} más`);
+    }
+    // Otros lockfiles (yarn, pnpm) no se analizan: son sensibles.
+    for (const f of files.filter((f) => /(^|\/)(yarn\.lock|pnpm-lock\.yaml)$/.test(f.filename))) {
+      reasons.push(`lockfile no analizable: \`${f.filename}\``);
     }
     const lines = changedLines(files);
     if (lines > MAX_LINES) reasons.push(`${lines} líneas cambiadas sin lockfiles (máximo ${MAX_LINES})`);

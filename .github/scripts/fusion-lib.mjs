@@ -129,6 +129,41 @@ export function riskyDependencyChanges(basePkg, headPkg) {
   return out;
 }
 
+const NPM_REGISTRY = 'https://registry.npmjs.org/';
+
+/** Ruta del lockfile npm (v2/v3) si `filename` lo es; si no, null. */
+export function isNpmLockfile(filename) {
+  return /(^|\/)(package-lock\.json|npm-shrinkwrap\.json)$/.test(filename);
+}
+
+/**
+ * Cambios de un package-lock.json (v2/v3) que no son menores ni de parche: paquete nuevo (también
+ * transitivo), salto de mayor, tarball que cambia sin cambiar de versión o que pasa a venir de
+ * fuera de registry.npmjs.org. Un lockfile sin `packages` se trata como sensible.
+ */
+export function riskyLockfileChanges(baseLock, headLock) {
+  const before = baseLock?.packages;
+  const after = headLock?.packages;
+  if (!after || (baseLock && !before)) return ['lockfile sin `packages` (versión antigua)'];
+  const out = [];
+  for (const [path, pkg] of Object.entries(after)) {
+    if (path === '') continue;
+    const prev = before?.[path];
+    if (!prev) {
+      out.push(`${path} nuevo (${pkg.version ?? '?'})`);
+      continue;
+    }
+    if (prev.resolved === pkg.resolved && prev.integrity === pkg.integrity && prev.version === pkg.version) continue;
+    if (prev.version === pkg.version) {
+      out.push(`${path} ${pkg.version}: cambia el tarball sin cambiar de versión`);
+    } else if (majorOf(prev.version) === null || majorOf(prev.version) !== majorOf(pkg.version)) {
+      out.push(`${path} ${prev.version} → ${pkg.version}`);
+    }
+    if (pkg.resolved && !pkg.resolved.startsWith(NPM_REGISTRY)) out.push(`${path} se descarga de fuera de npm`);
+  }
+  return out;
+}
+
 /**
  * Estado de los checks del último commit. `runs` = [{ name, status, conclusion }] (los más
  * recientes por nombre). Devuelve { ready, pending, failed, missing }.

@@ -9,6 +9,7 @@ import {
   parseCodeowners,
   REQUIRED_CHECKS,
   riskyDependencyChanges,
+  riskyLockfileChanges,
   sensitiveFiles,
 } from './fusion-lib.mjs';
 
@@ -146,4 +147,24 @@ test('la configuración de la CI es zona sensible', () => {
 test('una línea sin dueños posterior quita la zona (manda la última que casa)', () => {
   const rules = parseCodeowners('/api/src/ @rafa\n/api/src/**/*.test.ts\n');
   assert.deepEqual(sensitiveFiles(['api/src/a.ts', 'api/src/x/b.test.ts'], rules), ['api/src/a.ts (/api/src/)']);
+});
+
+const reg = (n, v) => `https://registry.npmjs.org/${n}/-/${n}-${v}.tgz`;
+const lock = (pkgs) => ({ lockfileVersion: 3, packages: { '': { name: 'web' }, ...pkgs } });
+
+test('lockfile: un parche desde npm pasa; quitar paquetes también', () => {
+  const base = lock({ 'node_modules/zod': { version: '3.22.0', resolved: reg('zod', '3.22.0'), integrity: 'sha512-a' }, 'node_modules/old': { version: '1.0.0', resolved: reg('old', '1.0.0'), integrity: 'sha512-o' } });
+  const head = lock({ 'node_modules/zod': { version: '3.23.1', resolved: reg('zod', '3.23.1'), integrity: 'sha512-b' } });
+  assert.deepEqual(riskyLockfileChanges(base, head), []);
+});
+
+test('lockfile: paquete nuevo, mayor, tarball cambiado o de fuera de npm es sensible', () => {
+  const zod = { version: '3.22.0', resolved: reg('zod', '3.22.0'), integrity: 'sha512-a' };
+  const base = lock({ 'node_modules/zod': zod });
+  assert.equal(riskyLockfileChanges(base, lock({ 'node_modules/zod': zod, 'node_modules/x': { version: '1.0.0' } })).length, 1);
+  assert.equal(riskyLockfileChanges(base, lock({ 'node_modules/zod': { version: '4.0.0', resolved: reg('zod', '4.0.0'), integrity: 'sha512-c' } })).length, 1);
+  assert.equal(riskyLockfileChanges(base, lock({ 'node_modules/zod': { ...zod, integrity: 'sha512-z' } })).length, 1);
+  assert.equal(riskyLockfileChanges(base, lock({ 'node_modules/zod': { ...zod, resolved: 'https://example.org/x.tgz' } })).length, 2);
+  assert.equal(riskyLockfileChanges(base, lock({ 'node_modules/zod': { version: '3.22.1', resolved: 'https://example.org/x.tgz', integrity: 'sha512-q' } })).length, 1);
+  assert.equal(riskyLockfileChanges(base, { lockfileVersion: 1, dependencies: {} }).length, 1);
 });
