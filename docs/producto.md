@@ -12,12 +12,12 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 |---|---|---|
 | **Visitante** | Cualquiera, sin iniciar sesión | Ver el mapa de farolas y las incidencias abiertas (farola, estado, fecha, votos; sin autor ni comentario). Nada más |
 | **Comunero** | Email en la lista cerrada con rol comunero | Lo del visitante, más: crear una incidencia sobre una farola (comentario opcional) y votar +1 en una incidencia abierta |
-| **Directiva** | Email en la lista cerrada con rol directiva | Lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas, reubicarlas y crear farolas nuevas |
-| **Devs** | Equipo técnico (fuera de la app) | Cargar farolas y la lista cerrada a petición de Rafa; consultar la auditoría; atender supresiones |
+| **Directiva** | Email en la lista cerrada con rol directiva | Lo del comunero, más: ver todas las incidencias, cambiar su estado, ver la precisión de las farolas, reubicarlas y crear farolas nuevas; gestionar la lista cerrada (alta, rol, baja y reactivación) |
+| **Devs** | Equipo técnico (fuera de la app) | Cargar farolas y dar de alta al primer miembro de la directiva a petición de Rafa; consultar la auditoría; atender supresiones |
 
 - **Mapa público en solo lectura**; **toda acción requiere login con Google y estar en la lista cerrada**.
 - **Login con Google**: Google Identity Services en Angular, cargado solo en la pantalla de login; el ID token se valida en **cada** Function con `google-auth-library` y se exige `email_verified`. Sin auth de SWA. Coste 0 €.
-- **Lista cerrada = tabla `Usuarios`** (PK `uid` UUID v4 aleatorio; `email` normalizado, `sub` fijado en el primer login, `rol`, `estado` activo/baja/suprimido). Es la única correspondencia uid ↔ persona. La mantienen los devs; el rol directiva solo se cambia a petición documentada del presidente; todo auditado. El `estado` se comprueba en cada petición.
+- **Lista cerrada = tabla `Usuarios`** (PK `uid` UUID v4 aleatorio; `email` normalizado, `sub` fijado en el primer login, `rol`, `estado` activo/baja/suprimido). Es la única correspondencia uid ↔ persona. La mantiene la directiva desde la app (`/usuarios`, decisión de Rafa del 2026-11-17): alta por correo con rol, cambio de rol, baja y reactivación; nadie puede cambiarse el rol ni darse de baja a sí mismo; la directiva ve el correo, el rol, el estado y si ya ha entrado, nunca el `sub`. La supresión sigue en manos de los devs; todo auditado. El `estado` se comprueba en cada petición.
 - **No autorizado**: 403 genérico, sin guardar su email ni en logs. Puede **solicitar acceso** (envía voluntariamente su email; ver "Pendiente" 1).
 - El rol se decide siempre en el servidor; el front solo oculta o muestra controles.
 

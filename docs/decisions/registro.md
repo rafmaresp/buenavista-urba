@@ -330,3 +330,13 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "La de recolocar farolas si eres admin" (Rafa; admin = directiva). Crear farolas y la precisión para la directiva no se pidieron ahora.
 - Precisión `verificada` sin preguntar: la directiva coloca la farola sobre la ortofoto o en campo; elegirla en cada movimiento añadiría un paso mientras nadie la ve.
 - La caché pública de 5 minutos de `GET /api/farolas` se mantiene: quien mueve la farola la ve al momento y el resto, como mucho, a los 5 minutos.
+
+### 2026-11-17: La directiva gestiona la lista cerrada desde la app
+
+**By:** Rafa (eligió la opción 2 en el chat del proyecto)
+**What:** La directiva da de alta, cambia el rol, da de baja y reactiva usuarios desde la pantalla `/usuarios` (`specs/009-gestion-usuarios/`), con `GET`/`POST /api/usuarios` y `PATCH /api/usuarios/{uid}` solo para la directiva. "Quitar" es dar de baja (reversible), no borrar. Nadie puede cambiarse el rol ni darse de baja a sí mismo, así que siempre queda alguien en la directiva. Cada alta y cambio lo audita `RepositorioUsuarios` (`usuario.alta`, `usuario.cambio` con `{rol, estado}`, sin correo) y se deshace si la auditoría falla. El SAS de `Usuarios` de la app pasa de `ru` a `raud`. Sustituye a "la lista la mantienen los devs; el rol directiva solo se cambia a petición documentada del presidente" de `docs/producto.md` y al workflow de bajas y cambios de rol previsto en el 4d. El alta por el secreto `USUARIOS_ALTA` se mantiene para el primer miembro de la directiva y para recuperarse si nadie de la directiva puede entrar. La supresión sigue con los devs.
+**Why:** Rafa quiere una lista cerrada que gestione la comunidad sin pasar por los devs ni por un despliegue para cada vecino.
+- La directiva ve los correos de toda la lista: hace falta para gestionarla y actúa en nombre de la comunidad. Se refleja en `/privacidad`. Se aparta de la propuesta RGPD (`docs/rgpd/propuesta-rgpd-v1.md`, sec. 3: "solo los devs ven la lista"); queda pendiente de que Rai lo revise junto con las demás preguntas RGPD.
+- `d` en el SAS solo para deshacer un alta sin auditar (mismo patrón que `Incidencias`); con `u` la app ya podía reescribir cualquier fila.
+- Riesgo aceptado: dos altas simultáneas del mismo correo pueden duplicarlo (Table Storage no tiene índices únicos); ese correo no entraría hasta que los devs borren la fila sobrante.
+
