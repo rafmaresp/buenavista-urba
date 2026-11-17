@@ -4,6 +4,8 @@
 #  - Solo lee el repo: no hace commits ni cambia el PR. Comenta como github-actions[bot].
 #  - El job termina en rojo si quedan hallazgos (bloqueantes o importantes) o si no hay veredicto.
 #    Ese resultado es la condición 2 de la política de fusión de AGENTS.md.
+#  - Si la ejecución de Claude falla (error de la API, límite de uso...), espera 2 minutos y lo
+#    reintenta una vez en el mismo job. Un veredicto con hallazgos no se reintenta.
 # Modelo: Opus 5.5 (revisión de más calidad; los PRs son S/M). Consumo contra la suscripción
 # de Claude (secreto CLAUDE_CODE_OAUTH_TOKEN), sin API de pago.
 name: Revisor Claude
@@ -27,7 +29,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     permissions:
       contents: read
       pull-requests: write
@@ -38,7 +40,8 @@ jobs:
 
       - id: claude
         uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
-        with:
+        continue-on-error: true
+        with: &revisor
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Token del workflow: comenta como github-actions[bot], no como Rafa ni como el autor.
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -63,10 +66,26 @@ jobs:
             --max-turns 40
             --allowedTools "Skill,Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git log:*),Bash(git diff:*),mcp__github_inline_comment__create_inline_comment"
 
+      - name: Esperar antes de reintentar
+        if: steps.claude.outcome == 'failure'
+        run: |
+          echo "::warning::La revisión ha fallado (probablemente error de la API). Reintento en 2 minutos."
+          sleep 120
+
+      - id: reintento
+        if: steps.claude.outcome == 'failure'
+        uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
+        with: *revisor
+
       - name: Comprobar veredicto
         env:
-          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          EXECUTION_FILE: ${{ steps.reintento.outputs.execution_file || steps.claude.outputs.execution_file }}
+          REINTENTO: ${{ steps.reintento.outcome }}
         run: |
+          if [ "$REINTENTO" = "failure" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            echo "::error::La revisión no ha terminado (error de la API también en el reintento). Relanza el job desde GitHub o haz push."
+            exit 1
+          fi
           veredicto=$(jq -r '[.[] | select(.type == "result")] | last | .result // ""' "$EXECUTION_FILE" | grep -oE 'VEREDICTO: (SIN|CON)_HALLAZGOS' | tail -n1 || true)
           echo "Veredicto: ${veredicto:-ninguno}"
           if [ "$veredicto" != "VEREDICTO: SIN_HALLAZGOS" ]; then
