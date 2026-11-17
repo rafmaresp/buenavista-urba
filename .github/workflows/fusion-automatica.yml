@@ -1,0 +1,53 @@
+# Fusión automática (AGENTS.md, "Política de fusión"). Cada vez que termina la CI o el revisor
+# de un PR, comprueba las tres condiciones de la política y, si se cumplen, fusiona el PR.
+#  - Solo PRs de ramas claude/ del propio repo, no borradores, contra main y sin la etiqueta
+#    `no-fusionar`. Las reglas están en .github/scripts/fusion-lib.mjs (con tests).
+#  - Se dispara por workflow_run: corre con el código de main, nunca con el del PR, y no hace
+#    checkout del PR. Solo lee la API y, si toca, fusiona.
+#  - Fusiona con el token de Rafa (secreto PR_TOKEN, necesita Contents: read and write y Pull
+#    requests: write) para que el push a main dispare el despliegue; con GITHUB_TOKEN no lo haría.
+#  - Si el PR cae en zona sensible, deja un único comentario diciendo por qué lo fusiona Rafa.
+name: Fusión automática
+
+on:
+  workflow_run:
+    workflows: ["CI", "Revisor Claude"]
+    types: [completed]
+
+permissions: {}
+
+# Una sola evaluación por rama a la vez: la CI y el revisor pueden acabar casi a la vez.
+concurrency:
+  group: fusion-automatica-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  fusionar:
+    name: Fusión automática
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'claude/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: write
+    steps:
+      # Código de main (el del evento workflow_run), solo los scripts y CODEOWNERS.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "^22.22.3"
+      - name: Evaluar y fusionar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_TOKEN: ${{ secrets.PR_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: node .github/scripts/fusion-automatica.mjs

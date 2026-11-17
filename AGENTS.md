@@ -78,7 +78,7 @@ Sin spec: corrige directamente con su test. Si al hacerlo cambia una regla de ne
 
 - Idioma: español de España en docs, issues, PR y mensajes de commit. Código e identificadores en inglés salvo términos de dominio ya fijados (farola, incidencia, directiva, comunero).
 - Commits con Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`…).
-- Nunca hagas push a `main` ni fusiones PR: Rafa revisa y fusiona todo mientras la política de fusión de abajo no esté activa.
+- Nunca hagas push a `main` ni fusiones PR a mano: lo que cumple la política de fusión de abajo lo fusiona el workflow `Fusión automática`, y todo lo demás lo fusiona Rafa.
 - No toques `.github/workflows/` salvo que el issue lo pida expresamente.
 - Privacidad: nada de emails, tokens ni datos personales en logs, auditoría, fixtures o commits. Respeta `docs/rgpd/`.
 - Sin secretos en el repo. Las Actions se fijan por SHA con el comentario de versión.
@@ -86,15 +86,17 @@ Sin spec: corrige directamente con su test. Si al hacerlo cambia una regla de ne
 
 ## Revisión independiente
 
-Cada PR no borrador lo revisa otro Claude en contexto limpio (`.github/workflows/claude-revisor.yml`, modelo Opus, skill `revisar-pr`). Comenta los hallazgos en el PR y su check **Revisor independiente** queda en rojo mientras haya hallazgos bloqueantes o importantes. Para corregirlos, Rafa (o Claude desde el proyecto) comenta `@claude` en el PR; cada push vuelve a lanzar la revisión.
+Cada PR no borrador lo revisa otro Claude en contexto limpio (`.github/workflows/claude-revisor.yml`, modelo Opus, skill `revisar-pr`). Comenta los hallazgos en el PR y su check **Revisor independiente** queda en rojo mientras haya hallazgos bloqueantes o importantes. Para corregirlos, Rafa (o Claude desde el proyecto) comenta `@claude` en el PR; cada push vuelve a lanzar la revisión. Si la ejecución falla por un error de la API, el job la reintenta una vez a los 2 minutos.
 
 ## Política de fusión
 
-> **Estado: NO ACTIVA.** Hasta que Rafa la active con un PR que cambie esta línea, la constitución (`Sin auto-merge`) y el registro de decisiones, Claude no fusiona nada: todos los PRs los fusiona Rafa. Requisitos previos para activarla: revisor independiente funcionando, tests reales en la CI (desde el cambio 2 del roadmap) y unos cuantos PRs revisados por Rafa con estos checks.
+> **Estado: ACTIVA** desde el 17-nov-2026 (decisión de Rafa en `docs/decisions/registro.md`).
 
-Cuando esté activa, Claude puede fusionar un PR **solo si se cumplen las tres condiciones**:
+La aplica el workflow `.github/workflows/fusion-automatica.yml`, no un agente: cada vez que termina la CI o el revisor de un PR, comprueba las condiciones con las reglas de `.github/scripts/fusion-lib.mjs` y, si se cumplen, fusiona el PR. Solo considera PRs de ramas `claude/` del propio repo, no borradores, contra `main` y sin la etiqueta `no-fusionar` (ponla para que un PR que cumple espere a Rafa). Si el PR cae en zona sensible, deja un comentario con el motivo y lo fusiona Rafa. Fusiona con el secreto `PR_TOKEN` para que el push a `main` dispare el despliegue.
 
-1. **CI en verde**: todos los checks del PR pasan (los del workflow `CI`: los cuatro obligatorios del ruleset, con build y tests de `web/` y `api/` en `Tests & coverage floor`).
+Un PR se fusiona solo **si se cumplen las tres condiciones**:
+
+1. **CI en verde**: todos los checks del último commit pasan o están saltados, y estos están en verde: los cuatro obligatorios del ruleset (con build y tests de `web/` y `api/` en `Tests & coverage floor`) y `e2e`.
 2. **Revisor sin hallazgos abiertos**: el check **Revisor independiente** está en verde sobre el último commit.
 3. **Sin zonas sensibles**: ningún archivo del PR está en las rutas de `.github/CODEOWNERS`, y el PR no cae en ninguno de los casos de la tabla.
 
@@ -108,5 +110,5 @@ Cuando esté activa, Claude puede fusionar un PR **solo si se cumplen las tres c
 | Dependencias con salto de versión mayor (cualquier `package.json`) | Roturas difíciles de prever |
 | Funcionalidad nueva completa (`specs/`) o diff de más de 300 líneas sin lockfiles | Ahí decide Rafa si es lo que quería |
 
-Entra sin Rafa: textos, estilos, arreglos acotados, tests, documentación fuera de las rutas anteriores y actualizaciones menores o de parche de dependencias. Tras cada fusión, Claude deja una línea en el chat del proyecto con el PR fusionado; deshacerlo es revertir ese PR. Ante la duda sobre si algo es sensible, es sensible.
+Entra sin Rafa: textos, estilos, arreglos acotados, tests, documentación fuera de las rutas anteriores y actualizaciones menores o de parche de dependencias. Una dependencia nueva o una versión que no se entiende cuenta como sensible. Tras cada fusión, el workflow deja un comentario en el PR y Claude, si el PR es suyo, una línea en el chat del proyecto; deshacerlo es revertir ese PR. Ante la duda sobre si algo es sensible, es sensible: se añade la ruta a `.github/CODEOWNERS`, que es la lista que usa el workflow.
 

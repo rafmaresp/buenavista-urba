@@ -38,4 +38,4 @@ cd api && npm ci && npm run build && npm test
 
 ## Cómo se trabaja
 
-El desarrollo se pide con issues de GitHub y lo hace Claude Code en GitHub Actions; Rafa revisa y fusiona todos los PRs. Reglas en `AGENTS.md` y principios en `.specify/memory/constitution.md`.
+El desarrollo se pide con issues de GitHub y lo hace Claude Code en GitHub Actions; los PRs sin zonas sensibles se fusionan solos con CI y revisor en verde, y el resto lo fusiona Rafa. Reglas en `AGENTS.md` y principios en `.specify/memory/constitution.md`.

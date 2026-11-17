@@ -30,11 +30,11 @@ Angular + Leaflet (PNOA por defecto y OSM, autohospedados) en `web/`; Azure Func
 
 - Se desarrolla desde issues de GitHub con Claude Code Action (ver `AGENTS.md`).
 - Feature nueva: spec, plan y tareas en `specs/NNN-nombre/` → revisión de Rafa en el PR → implementación en el mismo PR.
-- Sin auto-merge: Rafa revisa y fusiona todos los PRs. Nadie hace push a `main`.
+- Fusión automática solo según la política de fusión de `AGENTS.md` (CI y revisor en verde y sin zonas sensibles); el resto lo revisa y fusiona Rafa. Nadie hace push a `main`.
 - Idioma: español de España en specs, docs, issues, PRs y commits.
 
 ## Gobierno
 
 Esta constitución prevalece sobre cualquier otra práctica. Cambiarla requiere aprobación de Rafa en un PR que actualice también `docs/decisions/registro.md`. Cada plan comprueba su cumplimiento en la sección "Constitution Check"; una desviación se justifica en "Complexity Tracking".
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-15
+**Version**: 1.2.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-17

@@ -330,3 +330,10 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** "La de recolocar farolas si eres admin" (Rafa; admin = directiva). Crear farolas y la precisión para la directiva no se pidieron ahora.
 - Precisión `verificada` sin preguntar: la directiva coloca la farola sobre la ortofoto o en campo; elegirla en cada movimiento añadiría un paso mientras nadie la ve.
 - La caché pública de 5 minutos de `GET /api/farolas` se mantiene: quien mueve la farola la ve al momento y el resto, como mucho, a los 5 minutos.
+
+### 2026-11-17: Política de fusión ACTIVA con un workflow
+
+**By:** Rafa
+**What:** Se activa la política de fusión de `AGENTS.md`. La aplica el workflow `fusion-automatica.yml`, disparado al terminar la CI o el revisor de un PR (sin lanzamientos manuales). Fusiona los PRs de ramas `claude/`, no borradores y contra `main` cuando todos los checks del último commit están en verde (los cuatro obligatorios, `e2e` y `Revisor independiente`), ningún archivo está en `.github/CODEOWNERS`, no hay saltos de versión mayor ni dependencias nuevas y el diff no pasa de 300 líneas sin lockfiles. Si cae en zona sensible, comenta el motivo en el PR y lo fusiona Rafa. La etiqueta `no-fusionar` lo frena. Fusiona con `PR_TOKEN` para que el push a `main` dispare el despliegue, así que ese token pasa a necesitar `Contents: read and write`. El revisor reintenta una vez si su ejecución falla por un error de la API. La constitución cambia "Sin auto-merge" por esta regla (v1.2.0).
+**Why:** "Necesito que las PRs se autoaprueben si todo ha ido bien" (Rafa). Se usa un workflow y no el auto-merge nativo de GitHub porque este solo mira los checks obligatorios del ruleset (no el revisor) ni las zonas sensibles, y porque una fusión hecha con `GITHUB_TOKEN` no dispararía el despliegue.
+- No se aprueba el PR (el ruleset pide 0 aprobaciones): se fusiona directamente.

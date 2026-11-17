@@ -1,10 +1,9 @@
 # Zonas sensibles de la política de fusión (AGENTS.md, sección "Política de fusión").
-# Un PR que toque cualquiera de estas rutas lo fusiona siempre Rafa, nunca Claude.
+# Un PR que toque cualquiera de estas rutas lo fusiona siempre Rafa: el workflow
+# fusion-automatica.yml lee esta lista y no fusiona esos PRs.
 #
-# OJO: este archivo por sí solo no bloquea nada. Solo obliga si una regla de la rama `main`
-# exige revisión de code owners, y eso hoy no está activado (ver AGENTS.md).
-# Algunas rutas aún no existen (api/, web/, infra/ llegan con los PRs #3 y siguientes):
-# se dejan para que la regla valga en cuanto aparezcan.
+# La revisión de code owners no está activada en el ruleset de `main`; quien aplica la lista es
+# ese workflow. Algunas rutas aún no existen: se dejan para que la regla valga en cuanto aparezcan.
 
 # La propia política y lo que controla a los agentes
 /AGENTS.md                              @rafmaresp
