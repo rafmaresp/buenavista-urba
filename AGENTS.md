@@ -102,7 +102,7 @@ Un PR se fusiona solo **si se cumplen las tres condiciones**:
 
 | Zona sensible | Por qué |
 |---|---|
-| Login, roles y permisos (`api/` de autenticación y autorización, `auth` en `web/`) | Un fallo expone datos o da permisos de directiva |
+| Login, roles y permisos (todo el código de `api/src/` salvo sus tests, porque cada Function comprueba identidad y rol; sesión, GIS y login en `web/`) | Un fallo expone datos o da permisos de directiva |
 | Modelo de datos, auditoría y datos personales (`docs/rgpd/`, `data/`) | RGPD y migraciones difíciles de deshacer |
 | Capa restringida de redes (tuberías y cables) | Información que no debe ser pública |
 | Infraestructura, workflows, configuración de SWA y secretos (`infra/`, `.github/`, `staticwebapp.config.json`) | Controlan el despliegue y los propios guardarraíles |

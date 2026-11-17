@@ -20,9 +20,19 @@ test('las rutas sensibles del CODEOWNERS real se detectan', () => {
     '.github/workflows/ci.yml',
     '.claude/skills/revisar-pr/SKILL.md',
     'specs/009-algo/spec.md',
-    'api/src/functions/auth.ts',
-    'api/src/lib/repo.ts',
-    'web/src/app/core/auth.service.ts',
+    'api/src/identidad.ts',
+    'api/src/yo.ts',
+    'api/src/functions/yo.ts',
+    'api/src/tablas.ts',
+    'api/src/farolas-repo.ts',
+    'api/src/incidencias-repo.ts',
+    'api/src/usuarios.ts',
+    'api/src/functions/farola-reubicar.ts',
+    'api/src/pruebas/usuarios-dobles.ts',
+    'web/src/app/sesion.ts',
+    'web/src/app/gis.ts',
+    'web/src/app/login/login.ts',
+    'web/src/app/privacidad/privacidad.html',
     'data/farolas_buenavista.csv',
     'docs/rgpd/propuesta-rgpd-v1.md',
     'web/src/app/capas/redes-tuberias.ts',
@@ -37,9 +47,11 @@ test('las rutas normales no son sensibles', () => {
   const files = [
     'README.md',
     'docs/producto.md',
-    'web/src/app/mapa/mapa.component.ts',
-    'web/src/app/mapa/mapa.component.scss',
-    'api/src/functions/health.ts',
+    'web/src/app/mapa/mapa-farolas.ts',
+    'web/src/app/mapa/mapa-farolas.html',
+    'web/src/app/mapa/capas.ts',
+    'api/src/identidad.test.ts',
+    'api/src/carga-farolas.integration.test.ts',
     'e2e/tests/mapa.spec.ts',
     'web/package-lock.json',
   ];
@@ -129,4 +141,9 @@ test('cambiar scripts, overrides o engines de un package.json es sensible', () =
 test('la configuración de la CI es zona sensible', () => {
   const files = ['quality.config.json', 'api/vitest.config.ts', 'web/angular.json', 'e2e/playwright.config.ts', '.semgrepignore'];
   assert.equal(sensitiveFiles(files, patterns).length, files.length);
+});
+
+test('una línea sin dueños posterior quita la zona (manda la última que casa)', () => {
+  const rules = parseCodeowners('/api/src/ @rafa\n/api/src/**/*.test.ts\n');
+  assert.deepEqual(sensitiveFiles(['api/src/a.ts', 'api/src/x/b.test.ts'], rules), ['api/src/a.ts (/api/src/)']);
 });

@@ -16,12 +16,19 @@
 # Funcionalidades nuevas completas (llevan spec)
 /specs/                                 @rafmaresp
 
+# API entera: cada Function comprueba identidad y rol (constitución IV), y la capa de datos
+# audita (III). Cualquier cambio en el código de la API lo revisa Rafa; los tests no.
+/api/src/                               @rafmaresp
+
 # Login, roles y permisos
 /api/src/**/auth*                       @rafmaresp
 /api/src/**/*usuario*                   @rafmaresp
 /api/src/**/*roles*                     @rafmaresp
 /api/src/**/*permis*                    @rafmaresp
 /web/src/app/**/*auth*                  @rafmaresp
+/web/src/app/sesion.*                   @rafmaresp
+/web/src/app/gis.*                      @rafmaresp
+/web/src/app/login/                     @rafmaresp
 
 # Modelo de datos, auditoría y datos personales (RGPD)
 /api/src/**/*modelo*                    @rafmaresp
@@ -32,6 +39,7 @@
 /api/src/**/*storage*                   @rafmaresp
 /data/                                  @rafmaresp
 /docs/rgpd/                             @rafmaresp
+/web/src/app/privacidad/                @rafmaresp
 
 # Capa restringida de redes (tuberías y cables)
 **/*redes*                              @rafmaresp
@@ -51,3 +59,7 @@
 /web/angular.json                       @rafmaresp
 /web/tsconfig.spec.json                 @rafmaresp
 /e2e/playwright.config.*                @rafmaresp
+
+# Excepciones (sin dueño = no sensible; en CODEOWNERS manda la última línea que casa).
+# Van al final. Los tests de la API pueden fusionarse solos.
+/api/src/**/*.test.ts

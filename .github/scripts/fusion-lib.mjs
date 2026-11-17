@@ -52,21 +52,27 @@ export function matchesCodeowners(pattern, path) {
   return matchSegments(pats, path.split('/'));
 }
 
-/** Lee CODEOWNERS y devuelve los patrones (primer campo de cada línea útil). */
+/** Lee CODEOWNERS: [{ pattern, owners }] en orden. Una línea sin dueños quita la zona. */
 export function parseCodeowners(text) {
   return text
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#'))
-    .map((l) => l.split(/\s+/)[0]);
+    .map((l) => {
+      const [pattern, ...owners] = l.split(/\s+/);
+      return { pattern, owners };
+    });
 }
 
-/** Rutas cambiadas que caen en zona sensible según CODEOWNERS. */
-export function sensitiveFiles(files, patterns) {
+/**
+ * Rutas cambiadas que caen en zona sensible según CODEOWNERS. Como en GitHub, manda la última
+ * línea que casa; si esa línea no tiene dueños, la ruta no es sensible.
+ */
+export function sensitiveFiles(files, rules) {
   const out = [];
   for (const f of files) {
-    const hit = patterns.find((p) => matchesCodeowners(p, f));
-    if (hit) out.push(`${f} (${hit})`);
+    const hit = rules.findLast(({ pattern }) => matchesCodeowners(pattern, f));
+    if (hit && hit.owners.length > 0) out.push(`${f} (${hit.pattern})`);
   }
   return out;
 }
