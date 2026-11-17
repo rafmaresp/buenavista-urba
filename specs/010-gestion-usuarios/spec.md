@@ -67,7 +67,7 @@ Cambia la junta: la directiva saliente pasa a otro vecino a "directiva" y a sí 
 - La auditoría falla al escribir: el alta se borra o el cambio se restaura y la operación falla con "no disponible".
 - Dar de alta un correo que ya entró antes y fue suprimido por los devs: se trata como un correo nuevo (la fila suprimida no guarda correo).
 - Si dos personas dan de alta el mismo correo exactamente a la vez puede quedar duplicado; ese correo no podría entrar hasta que los devs lo arreglen (riesgo aceptado, ver Assumptions).
-- La única persona de la directiva no puede quedarse sin directiva porque no puede quitarse el rol a sí misma.
+- La única persona de la directiva no puede quedarse sin directiva porque no puede quitarse el rol a sí misma. Si dos personas de la directiva se quitan el rol (o se dan de baja) la una a la otra exactamente a la vez, la directiva puede quedar vacía (riesgo aceptado, ver Assumptions).
 
 ## Requirements *(mandatory)*
 
@@ -84,7 +84,7 @@ Cambia la junta: la directiva saliente pasa a otro vecino a "directiva" y a sí 
 - **FR-009**: Un usuario de baja MUST perder el acceso con sesión desde su siguiente petición; al reactivarlo, entra con la misma cuenta sin volver a vincularla.
 - **FR-010**: La app MUST mostrar la entrada a la pantalla de usuarios solo a la directiva, y en la fila propia MUST NOT ofrecer cambiar rol ni dar de baja.
 - **FR-011**: Las respuestas de la gestión de usuarios MUST NOT guardarse en ninguna caché; los correos MUST NOT aparecer en logs ni mensajes de error.
-- **FR-012**: El alta por el despliegue de infraestructura (lista de altas en secreto) se mantiene para el primer miembro de la directiva y para recuperarse si nadie de la directiva puede entrar.
+- **FR-012**: El alta por el despliegue de infraestructura (lista de altas en secreto) se mantiene para el primer miembro de la directiva y para dar de alta a una persona nueva de la directiva si nadie de la directiva puede entrar (no modifica usuarios existentes).
 
 ### Key Entities
 
@@ -106,5 +106,6 @@ Cambia la junta: la directiva saliente pasa a otro vecino a "directiva" y a sí 
 - La directiva ve los correos de todos los usuarios de la lista: es necesario para gestionarla y la directiva actúa en nombre de la comunidad (responsable del tratamiento). Se refleja en `/privacidad`; la revisión fina queda con las preguntas RGPD pendientes de Rai.
 - "Quitar" es dar de baja (reversible), no borrar: conserva el uid para la auditoría y las incidencias del usuario. La supresión (vaciar correo y vínculo) sigue siendo de los devs, igual que las solicitudes de acceso.
 - Dos altas simultáneas del mismo correo pueden duplicarlo (no hay índice único en la tabla); con dos o tres personas en la directiva el riesgo es despreciable y el efecto es que ese correo no entra hasta que los devs borren la fila sobrante.
+- Directiva vacía por concurrencia: aceptado por improbable (1–5 personas). Se recupera dando de alta por el despliegue de infraestructura un correo nuevo de la directiva o, para un correo ya existente, con los devs editando la fila (auditado como `dev:<alias>`).
 - La lista cabe en una pantalla (decenas de usuarios): sin paginación ni búsqueda.
 - Corregir incidencias o farolas desde la app queda fuera; se propondrá aparte.

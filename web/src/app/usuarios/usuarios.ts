@@ -60,12 +60,16 @@ export class Usuarios implements OnInit {
     });
   }
 
-  protected async cambiarRol(u: UsuarioGestion, rol: string): Promise<void> {
+  protected async cambiarRol(u: UsuarioGestion, selector: HTMLSelectElement): Promise<void> {
+    const rol = selector.value;
     if (rol !== 'comunero' && rol !== 'directiva') return;
     await this.hacer(async () => {
       const cambiado = await cambiarUsuario(this.llamar, u.uid, { rol });
       this.aviso.set({ tipo: 'ok', texto: `${cambiado.email} ahora es ${cambiado.rol}.` });
     });
+    // `[value]` no repinta el <select> si el rol de la lista recargada no ha cambiado (p. ej. tras un
+    // fallo): se fija a mano para que el selector muestre siempre el rol guardado.
+    selector.value = this.usuarios()?.find((x) => x.uid === u.uid)?.rol ?? u.rol;
   }
 
   protected async cambiarEstado(u: UsuarioGestion): Promise<void> {
@@ -113,7 +117,7 @@ export class Usuarios implements OnInit {
     this.rol.set((evento.target as HTMLSelectElement).value as RolUsuario);
   }
 
-  protected valor(evento: Event): string {
-    return (evento.target as HTMLSelectElement).value;
+  protected selector(evento: Event): HTMLSelectElement {
+    return evento.target as HTMLSelectElement;
   }
 }

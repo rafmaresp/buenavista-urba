@@ -346,5 +346,5 @@ El cambio scaffold-mapa-farolas se sustituye por scaffold-plataforma (solo base,
 **Why:** Rafa quiere una lista cerrada que gestione la comunidad sin pasar por los devs ni por un despliegue para cada vecino.
 - La directiva ve los correos de toda la lista: hace falta para gestionarla y actúa en nombre de la comunidad. Se refleja en `/privacidad`. Se aparta de la propuesta RGPD (`docs/rgpd/propuesta-rgpd-v1.md`, sec. 3: "solo los devs ven la lista"); queda pendiente de que Rai lo revise junto con las demás preguntas RGPD.
 - `d` en el SAS solo para deshacer un alta sin auditar (mismo patrón que `Incidencias`); con `u` la app ya podía reescribir cualquier fila.
-- Riesgo aceptado: dos altas simultáneas del mismo correo pueden duplicarlo (Table Storage no tiene índices únicos); ese correo no entraría hasta que los devs borren la fila sobrante.
+- Riesgo aceptado: dos altas simultáneas del mismo correo pueden duplicarlo (Table Storage no tiene índices únicos); ese correo no entraría hasta que los devs borren la fila sobrante. También: si dos personas de la directiva se quitan el rol la una a la otra a la vez, la directiva puede quedar vacía; se recupera con un alta nueva por `USUARIOS_ALTA` (que nunca modifica un usuario existente) o con los devs.
 

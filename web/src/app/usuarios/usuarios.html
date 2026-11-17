@@ -39,7 +39,7 @@
               <span class="usuarios__detalle">{{ u.rol }}</span>
             } @else {
               <span class="usuarios__acciones">
-                <select [attr.aria-label]="'Rol de ' + u.email" [value]="u.rol" [disabled]="ocupado()" (change)="cambiarRol(u, valor($event))">
+                <select [attr.aria-label]="'Rol de ' + u.email" [value]="u.rol" [disabled]="ocupado()" (change)="cambiarRol(u, selector($event))">
                   <option value="comunero">comunero</option>
                   <option value="directiva">directiva</option>
                 </select>

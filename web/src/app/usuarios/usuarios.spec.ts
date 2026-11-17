@@ -125,6 +125,21 @@ describe('Usuarios', () => {
     expect(el.querySelector('[role=status]')!.textContent).toContain('ahora es directiva');
   });
 
+  it('si falla el cambio de rol, el selector vuelve a mostrar el rol guardado', async () => {
+    const llamar = vi
+      .fn<LlamarMock>()
+      .mockResolvedValueOnce(json(200, { usuarios: [ANA, BEA] }))
+      .mockResolvedValueOnce(json(503, { error: 'no-disponible' }))
+      .mockResolvedValueOnce(json(200, { usuarios: [ANA, BEA] }));
+    const { fixture, el } = await montar('directiva', llamar);
+    const select = filas(el)[1]!.querySelector('select')!;
+    select.value = 'directiva';
+    select.dispatchEvent(new Event('change'));
+    await asentar(fixture);
+    expect(el.querySelector('.usuarios__aviso--error')!.textContent).toContain('No se ha podido completar');
+    expect(filas(el)[1]!.querySelector('select')!.value).toBe('comunero');
+  });
+
   it('si la lista no carga, explica que no está disponible', async () => {
     const { el } = await montar('directiva', vi.fn<LlamarMock>().mockImplementation(async () => json(503, { error: 'no-disponible' })));
     expect(el.querySelector('.usuarios__aviso--error')!.textContent).toContain('No se ha podido completar');
