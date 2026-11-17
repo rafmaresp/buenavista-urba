@@ -144,7 +144,7 @@ export class RepositorioIncidencias {
   }
 
   /**
-   * Cambia el estado de la incidencia abierta de una farola (spec 008). Como el alta: valida,
+   * Cambia el estado de la incidencia abierta de una farola (spec 009). Como el alta: valida,
    * escribe, audita y, si la auditoría falla, deshace y propaga el error.
    *
    * - Solo la incidencia a la que apunta el candado es modificable (si no, NoEncontrada).

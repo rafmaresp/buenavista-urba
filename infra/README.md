@@ -101,10 +101,10 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
 
   | App setting | Tabla | Permisos | Por qué |
   |---|---|---|---|
-  | `FAROLAS_CONNECTION` | `Farolas` | `r` (consultar) | La app solo lee el catálogo; el cambio 8 añadirá añadir y actualizar |
+  | `FAROLAS_CONNECTION` | `Farolas` | `ru` (consultar y actualizar) | La app lee el catálogo y la directiva reubica farolas (spec 008); añadir llegará con `POST` |
   | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
   | `USUARIOS_CONNECTION` | `Usuarios` | `ru` (consultar y actualizar) | La app solo fija el `sub` en el primer login; altas y bajas no van por la app |
-  | `INCIDENCIAS_CONNECTION` | `Incidencias` | `raud` (consultar, añadir, actualizar y borrar) | La app da de alta incidencias y la directiva cambia su estado (spec 008); borrar quita el candado al completar y deshace una escritura cuya auditoría falle |
+  | `INCIDENCIAS_CONNECTION` | `Incidencias` | `raud` (consultar, añadir, actualizar y borrar) | La app da de alta incidencias y la directiva cambia su estado (spec 009); borrar quita el candado al completar y deshace una escritura cuya auditoría falle |
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.
 - **Caducan un año después de cada despliegue de infraestructura.** Si en un año no cambia la infra, la API pierde el acceso: lanza **Desplegar infraestructura (Bicep)** a mano antes.

@@ -95,14 +95,15 @@ resource tablaIncidencias 'Microsoft.Storage/storageAccounts/tableServices/table
 }
 
 // Un SAS de servicio por tabla (decisión 2026-11-15, opción A): solo actúa sobre su tabla, no crea
-// ni borra tablas, solo HTTPS y caduca al año. La app solo lee Farolas (r) y solo añade y lee
-// Auditoria (ra): ni un fallo ni una credencial filtrada pueden modificar o borrar la auditoría.
+// ni borra tablas, solo HTTPS y caduca al año. La app lee y actualiza Farolas (ru: reubicar, spec 008;
+// ni añade ni borra) y solo añade y lee Auditoria (ra): ni un fallo ni una credencial filtrada
+// pueden modificar o borrar la auditoría.
 // Un SAS de tabla necesita tn=<tabla> en la query; se añade si listServiceSas no lo devuelve.
 var tableEndpoint = storage.properties.primaryEndpoints.table
 
 var farolasSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaFarolas.name)}'
-  signedPermission: 'r'
+  signedPermission: 'ru'
   signedProtocol: 'https'
   signedExpiry: sasExpiry
   keyToSign: sasKey
@@ -128,7 +129,7 @@ var usuariosSasToken = storage.listServiceSas('2023-05-01', {
 }).serviceSasToken
 var usuariosSas = contains(usuariosSasToken, 'tn=') ? usuariosSasToken : '${usuariosSasToken}&tn=${tablaUsuarios.name}'
 
-// Incidencias: la app lee, da de alta y actualiza el estado (spec 008, solo directiva); borra el
+// Incidencias: la app lee, da de alta y actualiza el estado (spec 009, solo directiva); borra el
 // candado al completar y para deshacer una escritura cuya auditoría falló.
 var incidenciasSasToken = storage.listServiceSas('2023-05-01', {
   canonicalizedResource: '/table/${storage.name}/${toLower(tablaIncidencias.name)}'

@@ -1,4 +1,4 @@
-import { ErrorCargaFarolas, FetchFn, cargarFarolas } from './farolas-cliente';
+import { ErrorCargaFarolas, ErrorReubicar, FetchFn, LlamarFn, cargarFarolas, reubicarFarola } from './farolas-cliente';
 
 const F01 = { id: 'F01', calle: 'C. M (paralela A-8032)', lat: 37.3186864, lon: -5.961454 };
 
@@ -52,5 +52,48 @@ describe('cargarFarolas (GET /api/farolas)', () => {
     ['elemento nulo', { farolas: [null] }],
   ])('falla con un catálogo malformado: %s', async (_caso, cuerpo) => {
     await expect(cargarFarolas(respuesta(cuerpo))).rejects.toBeInstanceOf(ErrorCargaFarolas);
+  });
+});
+
+describe('reubicarFarola (PUT /api/farolas/{id})', () => {
+  function llamada(status: number, cuerpo: unknown = {}) {
+    const llamadas: [string, RequestInit][] = [];
+    const llamar: LlamarFn = async (url, init) => {
+      llamadas.push([url, init]);
+      return { ok: status < 300, status, json: async () => cuerpo };
+    };
+    return { llamar, llamadas };
+  }
+
+  it('envía PUT con lat y lon en JSON y devuelve la farola movida', async () => {
+    const movida = { ...F01, lat: 37.3187, lon: -5.9615 };
+    const { llamar, llamadas } = llamada(200, { farola: { ...movida, precision: 'verificada' } });
+    expect(await reubicarFarola(llamar, 'F01', 37.3187, -5.9615)).toEqual(movida);
+    const [url, init] = llamadas[0]!;
+    expect(url).toBe('/api/farolas/F01');
+    expect(init.method).toBe('PUT');
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
+    expect(JSON.parse(init.body as string)).toEqual({ lat: 37.3187, lon: -5.9615 });
+  });
+
+  it.each([
+    [401, 'sin-sesion'],
+    [403, 'sin-sesion'],
+    [409, 'cambiada'],
+    [400, 'no-valido'],
+    [404, 'no-valido'],
+    [429, 'no-disponible'],
+    [503, 'no-disponible'],
+  ])('%i → %s', async (status, motivo) => {
+    const { llamar } = llamada(status);
+    await expect(reubicarFarola(llamar, 'F01', 37.31, -5.96)).rejects.toMatchObject({ motivo });
+  });
+
+  it('sin conexión o respuesta rara → no-disponible', async () => {
+    await expect(reubicarFarola(async () => Promise.reject(new TypeError('red')), 'F01', 37.31, -5.96)).rejects.toBeInstanceOf(
+      ErrorReubicar,
+    );
+    const { llamar } = llamada(200, { farola: { id: 'F01' } });
+    await expect(reubicarFarola(llamar, 'F01', 37.31, -5.96)).rejects.toMatchObject({ motivo: 'no-disponible' });
   });
 });

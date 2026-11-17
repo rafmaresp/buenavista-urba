@@ -34,7 +34,7 @@ export function validarPeticion(cuerpo: unknown): PeticionAviso | undefined {
   return { farola, comentario: texto };
 }
 
-// ---------- Cambio de estado (spec 008-cambiar-estado-incidencia) ----------
+// ---------- Cambio de estado (spec 009-cambiar-estado-incidencia) ----------
 
 /** Ciclo de estados (docs/producto.md sec. 4), en orden. Solo se avanza; Completado es final. */
 export const ESTADOS = [ESTADO_INICIAL, 'Recibido', 'Profesional notificado', ESTADO_COMPLETADO] as const;

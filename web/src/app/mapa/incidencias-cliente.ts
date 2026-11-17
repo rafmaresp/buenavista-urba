@@ -86,7 +86,7 @@ export async function reportarIncidencia(llamar: LlamarFn, farola: string, comen
   return soloPublico(cuerpo.incidencia);
 }
 
-// ---------- Cambio de estado (specs/008-cambiar-estado-incidencia, solo directiva) ----------
+// ---------- Cambio de estado (specs/009-cambiar-estado-incidencia, solo directiva) ----------
 
 /** Ciclo de estados, en orden (docs/producto.md sec. 4). Lo valida la API; aquí solo se ofrece. */
 export const ESTADOS = ['Nuevo', 'Recibido', 'Profesional notificado', 'Completado'] as const;

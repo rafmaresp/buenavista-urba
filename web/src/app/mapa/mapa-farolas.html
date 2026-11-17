@@ -16,4 +16,18 @@
   @if (estado() === 'ok' && errorIncidencias()) {
     <p class="mapa__aviso mapa__aviso--error" role="alert">No se pudieron cargar las incidencias abiertas.</p>
   }
+
+  @if (movimiento(); as m) {
+    <div class="mapa__mover" role="group" aria-label="Mover farola">
+      @if (m.fase === 'arrastrando') {
+        <p>Arrastra {{ m.id }} a su sitio.</p>
+      } @else {
+        <p>¿Mover {{ m.id }} aquí?</p>
+      }
+      <button type="button" class="mapa__mover-guardar" [disabled]="m.fase !== 'confirmar'" (click)="guardar()">Guardar</button>
+      <button type="button" [disabled]="m.fase === 'guardando'" (click)="cancelarMover()">Cancelar</button>
+    </div>
+  } @else if (avisoMover(); as a) {
+    <p class="mapa__mover" [class.mapa__mover--error]="a.error" [attr.role]="a.error ? 'alert' : 'status'">{{ a.texto }}</p>
+  }
 </section>

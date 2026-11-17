@@ -33,8 +33,11 @@ export interface FarolaPublica {
 }
 
 const CABECERA = 'farola,calle,lat,lon,posicion';
-const LAT = { min: 37.3, max: 37.33 };
-const LON = { min: -5.98, max: -5.95 };
+/** Recuadro de la urbanización: lo valida la semilla y cada reubicación. */
+export const LAT = { min: 37.3, max: 37.33 };
+export const LON = { min: -5.98, max: -5.95 };
+/** Contrato de ids: F + 2 cifras (decisión de Rafa: nunca habrá más de 100 farolas). */
+export const ID_FAROLA = /^F\d{2}$/;
 
 export class SemillaInvalida extends Error {
   constructor(linea: number, motivo: string) {
@@ -95,6 +98,25 @@ export function parsearSemilla(texto: string): Farola[] {
     throw new SemillaInvalida(lineas.length, `hay ${farolas.length} farolas, faltan ${faltan.join(', ')}`);
   }
   return farolas;
+}
+
+export interface Posicion {
+  lat: number;
+  lon: number;
+}
+
+function enRango(valor: unknown, rango: { min: number; max: number }): valor is number {
+  return typeof valor === 'number' && Number.isFinite(valor) && valor >= rango.min && valor <= rango.max;
+}
+
+/**
+ * Cuerpo de PUT /api/farolas/{id}: `{lat, lon}` numéricos dentro de la urbanización.
+ * Cualquier otro campo (calle, precisión) se ignora. Devuelve undefined si no es válido.
+ */
+export function validarReubicacion(cuerpo: unknown): Posicion | undefined {
+  if (typeof cuerpo !== 'object' || cuerpo === null || Array.isArray(cuerpo)) return undefined;
+  const { lat, lon } = cuerpo as Record<string, unknown>;
+  return enRango(lat, LAT) && enRango(lon, LON) ? { lat, lon } : undefined;
 }
 
 export function entidadDeFarola(farola: Farola): EntidadFarola {

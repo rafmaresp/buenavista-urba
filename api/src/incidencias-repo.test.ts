@@ -148,7 +148,7 @@ describe('RepositorioIncidencias.abiertas() (US3)', () => {
   });
 });
 
-describe('RepositorioIncidencias.cambiarEstado() (spec 008)', () => {
+describe('RepositorioIncidencias.cambiarEstado() (spec 009)', () => {
   async function conIncidencia(opciones: Parameters<typeof preparar>[0] = {}) {
     const p = preparar(opciones);
     // El alta se hace con otra instancia sin fallos para partir de una incidencia abierta en Nuevo.

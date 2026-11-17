@@ -150,7 +150,7 @@ describe('GET /api/incidencias (US3)', () => {
   });
 });
 
-describe('validarCambio() (spec 008)', () => {
+describe('validarCambio() (spec 009)', () => {
   const ID = '0b9c4f3e-6a1d-4c8e-9f2a-1d3e5b7c9a01';
 
   it('acepta id uuid, farola y un estado del ciclo; ignora campos de más', () => {
@@ -180,7 +180,7 @@ describe('validarCambio() (spec 008)', () => {
   });
 });
 
-describe('PUT /api/incidencias/{id} (spec 008)', () => {
+describe('PUT /api/incidencias/{id} (spec 009)', () => {
   function prepararCambio(opciones: { rol?: string; estadoUsuario?: string; auditoriaFalla?: boolean } = {}) {
     const usuarios = tablaUsuarios([
       filaAna({ sub: 'google-ana', rol: opciones.rol ?? 'directiva', estado: opciones.estadoUsuario ?? 'activo' }),

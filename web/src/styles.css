@@ -216,3 +216,66 @@ app-mapa-farolas {
   display: inline-block;
   margin-top: 6px;
 }
+
+/* Mover farola (specs/008): barra fija abajo, fuera del popup, con botones grandes para el dedo. */
+.ficha__mover {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--azul);
+  border-radius: 6px;
+  background: var(--fondo);
+  color: var(--azul);
+  font: inherit;
+  font-weight: 600;
+}
+
+.mapa__mover {
+  position: absolute;
+  z-index: 1000;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--fondo);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  text-align: center;
+}
+
+.mapa__mover p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mapa__mover button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--azul);
+  border-radius: 8px;
+  background: var(--fondo);
+  color: var(--azul);
+  font: inherit;
+  font-weight: 600;
+}
+
+.mapa__mover .mapa__mover-guardar {
+  background: var(--azul);
+  color: #fff;
+}
+
+.mapa__mover button:disabled {
+  opacity: 0.6;
+}
+
+.mapa__mover--error {
+  border: 2px solid var(--error);
+  color: var(--error);
+  font-weight: 600;
+}
