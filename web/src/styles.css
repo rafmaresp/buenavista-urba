@@ -168,7 +168,8 @@ app-mapa-farolas {
   font-weight: 600;
 }
 
-.ficha__aviso {
+.ficha__aviso,
+.ficha__estado {
   display: grid;
   gap: 4px;
   margin-top: 8px;
@@ -180,7 +181,8 @@ app-mapa-farolas {
   font-size: 0.9rem;
 }
 
-.ficha__comentario {
+.ficha__comentario,
+.ficha__selector {
   width: 100%;
   box-sizing: border-box;
   font: inherit;

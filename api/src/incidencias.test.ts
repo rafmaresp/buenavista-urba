@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { EntidadAuditoria } from './auditoria';
 import type { DepsIdentidad } from './identidad';
-import { MAX_COMENTARIO, validarPeticion } from './incidencias';
-import { type DepsIncidencias, respuestaCrear, respuestaListar } from './incidencias-http';
+import { ESTADOS, MAX_COMENTARIO, esPosterior, validarCambio, validarPeticion } from './incidencias';
+import { type DepsIncidencias, respuestaCambiarEstado, respuestaCrear, respuestaListar } from './incidencias-http';
 import { RepositorioIncidencias } from './incidencias-repo';
 import { LimitePeticiones } from './limite';
 import { tablaIncidencias } from './pruebas/incidencias-dobles';
@@ -147,5 +147,174 @@ describe('GET /api/incidencias (US3)', () => {
     const { deps, registrarError } = preparar({ lecturaFalla: true });
     expect(await respuestaListar(deps)).toEqual({ status: 500, headers: NO_STORE, jsonBody: { error: 'no-disponible' } });
     expect(registrarError).toHaveBeenCalledWith('GET /api/incidencias falló: RestError 500');
+  });
+});
+
+describe('validarCambio() (spec 009)', () => {
+  const ID = '0b9c4f3e-6a1d-4c8e-9f2a-1d3e5b7c9a01';
+
+  it('acepta id uuid, farola y un estado del ciclo; ignora campos de más', () => {
+    for (const estado of ESTADOS) expect(validarCambio(ID, { farola: 'F07', estado, autor: 'x' })).toEqual({ id: ID, farola: 'F07', estado });
+  });
+
+  it.each([
+    [undefined, { farola: 'F07', estado: 'Recibido' }],
+    ['no-uuid', { farola: 'F07', estado: 'Recibido' }],
+    [ID, { farola: 'F7', estado: 'Recibido' }],
+    [ID, { farola: 'F07', estado: 'En curso' }],
+    [ID, { farola: 'F07', estado: 'recibido' }],
+    [ID, { farola: 'F07' }],
+    [ID, null],
+    [ID, ['F07', 'Recibido']],
+  ])('rechaza id %s con cuerpo %j', (id, cuerpo) => {
+    expect(validarCambio(id, cuerpo)).toBeUndefined();
+  });
+
+  it('esPosterior(): solo hacia delante, se pueden saltar estados', () => {
+    expect(esPosterior('Nuevo', 'Recibido')).toBe(true);
+    expect(esPosterior('Nuevo', 'Completado')).toBe(true);
+    expect(esPosterior('Recibido', 'Recibido')).toBe(false);
+    expect(esPosterior('Profesional notificado', 'Recibido')).toBe(false);
+    expect(esPosterior('Completado', 'Completado')).toBe(false);
+    expect(esPosterior('Desconocido', 'Completado')).toBe(false);
+  });
+});
+
+describe('PUT /api/incidencias/{id} (spec 009)', () => {
+  function prepararCambio(opciones: { rol?: string; estadoUsuario?: string; auditoriaFalla?: boolean } = {}) {
+    const usuarios = tablaUsuarios([
+      filaAna({ sub: 'google-ana', rol: opciones.rol ?? 'directiva', estado: opciones.estadoUsuario ?? 'activo' }),
+    ]);
+    const registrarError = vi.fn<(m: string) => void>();
+    const identidad: DepsIdentidad = {
+      clientId: CLIENT_ID,
+      verificar: async (token) => {
+        if (token !== TOKEN) throw new Error('token no válido');
+        return { sub: 'google-ana', email: 'ana@example.com', email_verified: true };
+      },
+      usuarios: () => new RepositorioUsuarios(usuarios.cliente, auditoriaDoble(usuarios.orden)),
+      limite: new LimitePeticiones(),
+      registrarError,
+    };
+    const tabla = tablaIncidencias();
+    const entradas: EntidadAuditoria[] = [];
+    let auditoriaFalla = false;
+    const auditoria = {
+      createEntity: async (e: EntidadAuditoria) => {
+        if (auditoriaFalla) throw Object.assign(new Error('https://x?sig=secreto'), { name: 'RestError', statusCode: 500 });
+        entradas.push(e);
+      },
+    };
+    const deps: DepsIncidencias = {
+      incidencias: () => new RepositorioIncidencias(tabla.cliente, auditoria),
+      farolaExiste: async () => true,
+      registrarError,
+    };
+    const crearIncidencia = async () => {
+      const i = await deps.incidencias().crear({ farola: 'F07', comentario: 'Privado', autor: UID_ANA });
+      entradas.length = 0;
+      auditoriaFalla = Boolean(opciones.auditoriaFalla);
+      return i;
+    };
+    const cambiarConLector = (id: string | undefined, leer: () => Promise<unknown>, token: string | null = TOKEN) =>
+      respuestaCambiarEstado(cabeceras(token), id, leer, identidad, deps);
+    const cambiar = (id: string | undefined, cuerpo: unknown, token: string | null = TOKEN) =>
+      cambiarConLector(id, async () => cuerpo, token);
+    return { cambiar, cambiarConLector, crearIncidencia, tabla, entradas, registrarError };
+  }
+
+  it('la directiva cambia el estado: 200 con la incidencia pública y auditado con su uid', async () => {
+    const { cambiar, crearIncidencia, entradas } = prepararCambio();
+    const i = await crearIncidencia();
+    const r = await cambiar(i.id, { farola: 'F07', estado: 'Recibido' });
+    expect(r).toEqual({ status: 200, headers: NO_STORE, jsonBody: { incidencia: { ...i, estado: 'Recibido' } } });
+    expect(JSON.stringify(r.jsonBody)).not.toContain('Privado');
+    expect(entradas).toHaveLength(1);
+    expect(entradas[0]).toMatchObject({ actor: UID_ANA, accion: 'incidencia.estado' });
+  });
+
+  it('sin token o con token no válido: 401 sin tocar la tabla', async () => {
+    const { cambiar, crearIncidencia, tabla } = prepararCambio();
+    const i = await crearIncidencia();
+    tabla.cliente.getEntity.mockClear();
+    expect((await cambiar(i.id, { farola: 'F07', estado: 'Recibido' }, null)).status).toBe(401);
+    expect((await cambiar(i.id, { farola: 'F07', estado: 'Recibido' }, 'otro')).status).toBe(401);
+    expect(tabla.cliente.getEntity).not.toHaveBeenCalled();
+  });
+
+  it('un comunero recibe el 403 genérico sin leer ni escribir incidencias (US3)', async () => {
+    const { cambiar, crearIncidencia, tabla, entradas } = prepararCambio({ rol: 'comunero' });
+    const i = await crearIncidencia();
+    tabla.cliente.getEntity.mockClear();
+    const r = await cambiar(i.id, { farola: 'F07', estado: 'Completado' });
+    expect(r).toEqual({ status: 403, headers: NO_STORE, jsonBody: { error: 'sin-acceso' } });
+    expect(tabla.cliente.getEntity).not.toHaveBeenCalled();
+    expect(tabla.filas.get(`F07|${i.id}`)).toMatchObject({ estado: 'Nuevo' });
+    expect(entradas).toHaveLength(0);
+  });
+
+  it('una directiva de baja recibe 403', async () => {
+    const { cambiar, crearIncidencia } = prepararCambio({ estadoUsuario: 'baja' });
+    const i = await crearIncidencia();
+    expect((await cambiar(i.id, { farola: 'F07', estado: 'Recibido' })).status).toBe(403);
+  });
+
+  it('entrada no válida: 400 peticion-no-valida', async () => {
+    const { cambiar, crearIncidencia } = prepararCambio();
+    const i = await crearIncidencia();
+    for (const [id, cuerpo] of [
+      ['x', { farola: 'F07', estado: 'Recibido' }],
+      [i.id, { farola: 'F07', estado: 'En curso' }],
+      [i.id, 'texto'],
+    ] as const) {
+      expect(await cambiar(id, cuerpo)).toEqual({ status: 400, headers: NO_STORE, jsonBody: { error: 'peticion-no-valida' } });
+    }
+  });
+
+  it('cuerpo que no es JSON: 400', async () => {
+    const { cambiarConLector, crearIncidencia } = prepararCambio();
+    const i = await crearIncidencia();
+    const r = await cambiarConLector(i.id, async () => {
+      throw new SyntaxError('no JSON');
+    });
+    expect(r.status).toBe(400);
+  });
+
+  it('incidencia que no es la abierta de esa farola: 404', async () => {
+    const { cambiar, crearIncidencia } = prepararCambio();
+    const i = await crearIncidencia();
+    expect(await cambiar(i.id, { farola: 'F01', estado: 'Recibido' })).toEqual({
+      status: 404,
+      headers: NO_STORE,
+      jsonBody: { error: 'no-encontrada' },
+    });
+  });
+
+  it('volver atrás: 409 transicion-no-valida con la incidencia actual', async () => {
+    const { cambiar, crearIncidencia } = prepararCambio();
+    const i = await crearIncidencia();
+    await cambiar(i.id, { farola: 'F07', estado: 'Profesional notificado' });
+    expect(await cambiar(i.id, { farola: 'F07', estado: 'Recibido' })).toEqual({
+      status: 409,
+      headers: NO_STORE,
+      jsonBody: { error: 'transicion-no-valida', incidencia: { ...i, estado: 'Profesional notificado' } },
+    });
+  });
+
+  it('completar libera la farola: deja de listarse (US2)', async () => {
+    const { cambiar, crearIncidencia } = prepararCambio();
+    const i = await crearIncidencia();
+    expect((await cambiar(i.id, { farola: 'F07', estado: 'Completado' })).status).toBe(200);
+    expect((await cambiar(i.id, { farola: 'F07', estado: 'Completado' })).status).toBe(404);
+  });
+
+  it('si la auditoría falla: 503 sin detalles y el log sin el SAS ni el cuerpo', async () => {
+    const { cambiar, crearIncidencia, tabla, registrarError } = prepararCambio({ auditoriaFalla: true });
+    const i = await crearIncidencia();
+    const r = await cambiar(i.id, { farola: 'F07', estado: 'Recibido' });
+    expect(r).toEqual({ status: 503, headers: NO_STORE, jsonBody: { error: 'no-disponible' } });
+    expect(tabla.filas.get(`F07|${i.id}`)).toMatchObject({ estado: 'Nuevo' });
+    expect(registrarError).toHaveBeenCalledWith('PUT /api/incidencias falló: RestError 500');
+    expect(JSON.stringify(registrarError.mock.calls)).not.toMatch(/sig=|Recibido|ana@/);
   });
 });

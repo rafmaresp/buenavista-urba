@@ -44,7 +44,7 @@ Web para que los comuneros de la urbanización Buenavista I (Dos Hermanas, Sevil
 3. **Profesional notificado**: se ha avisado al profesional o empresa; la directiva puede poner una **fecha estimada** de resolución (opcional).
 4. **Completado**: la farola vuelve a admitir incidencias.
 
-- Transiciones validadas en servidor. *Propuesta a confirmar*: solo hacia delante (se puede saltar estados) y no se reabre una Completada; si la farola vuelve a fallar, incidencia nueva.
+- Transiciones validadas en servidor: solo hacia delante (se puede saltar estados) y no se reabre una Completada; si la farola vuelve a fallar, incidencia nueva (decisión 2026-11-15).
 - Panel de gestión: todas las incidencias, filtro por estado, orden por votos y antigüedad. La directiva puede ocultar un comentario (auditado sin copiar el texto).
 
 ### 5. Reubicar y crear farola (directiva)
