@@ -18,6 +18,8 @@ export interface Usuario {
   /** Lo que haya en la tabla: identificar() rechaza un valor fuera de ROLES. */
   rol: string;
   estado: string;
+  /** Fecha ISO de la baja; vacía si está activo. */
+  baja: string;
   /** ETag de la fila, para actualizar sin pisar un cambio concurrente. */
   etag: string;
 }
@@ -37,6 +39,11 @@ export interface AltaUsuario {
 }
 
 const FORMA_EMAIL = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+/** Forma mínima de un correo ya normalizado (sin espacios ni comas, con @ y dominio con punto). */
+export function esEmailValido(email: string): boolean {
+  return email.length <= 254 && FORMA_EMAIL.test(email);
+}
 
 /** La lista de altas tiene líneas inválidas. El mensaje lleva números de línea y motivos, nunca correos. */
 export class AltasInvalidas extends Error {
@@ -64,7 +71,7 @@ export function parsearAltas(texto: string): AltaUsuario[] {
     }
     const email = normalizarEmail(correo!);
     const rol = rolBruto.trim();
-    if (!FORMA_EMAIL.test(email)) {
+    if (!esEmailValido(email)) {
       errores.push(`Línea ${linea}: correo no válido`);
       return;
     }
@@ -82,4 +89,52 @@ export function parsearAltas(texto: string): AltaUsuario[] {
   });
   if (errores.length) throw new AltasInvalidas(errores);
   return altas;
+}
+
+// ---------- Gestión por la directiva (specs/009-gestion-usuarios) ----------
+
+/** Estados que la directiva puede poner: `suprimido` es solo de los devs. */
+export const ESTADOS_GESTION = ['activo', 'baja'] as const;
+export type EstadoGestion = (typeof ESTADOS_GESTION)[number];
+
+export interface CambioUsuario {
+  rol?: Rol;
+  estado?: EstadoGestion;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function esUid(valor: string | undefined): valor is string {
+  return typeof valor === 'string' && UUID.test(valor);
+}
+
+function esObjetoConClaves(valor: unknown, permitidas: readonly string[]): valor is Record<string, unknown> {
+  if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) return false;
+  return Object.keys(valor).every((k) => permitidas.includes(k));
+}
+
+/** Cuerpo de POST /api/usuarios: exactamente `email` y `rol`. Devuelve el alta normalizada o undefined. */
+export function validarAlta(cuerpo: unknown): AltaUsuario | undefined {
+  if (!esObjetoConClaves(cuerpo, ['email', 'rol'])) return undefined;
+  const { email, rol } = cuerpo;
+  if (typeof email !== 'string' || typeof rol !== 'string') return undefined;
+  const normalizado = normalizarEmail(email);
+  if (!esEmailValido(normalizado) || !esRol(rol)) return undefined;
+  return { email: normalizado, rol };
+}
+
+/** Cuerpo de PATCH /api/usuarios/{uid}: `rol` y/o `estado` (activo o baja), al menos uno y nada más. */
+export function validarCambio(cuerpo: unknown): CambioUsuario | undefined {
+  if (!esObjetoConClaves(cuerpo, ['rol', 'estado'])) return undefined;
+  const cambio: CambioUsuario = {};
+  if ('rol' in cuerpo) {
+    if (typeof cuerpo.rol !== 'string' || !esRol(cuerpo.rol)) return undefined;
+    cambio.rol = cuerpo.rol;
+  }
+  if ('estado' in cuerpo) {
+    const estado = cuerpo.estado;
+    if (typeof estado !== 'string' || !(ESTADOS_GESTION as readonly string[]).includes(estado)) return undefined;
+    cambio.estado = estado as EstadoGestion;
+  }
+  return cambio.rol || cambio.estado ? cambio : undefined;
 }

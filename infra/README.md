@@ -103,7 +103,7 @@ La Logic App solo corta si el cuerpo trae `schemaId = azureMonitorCommonAlertSch
   |---|---|---|---|
   | `FAROLAS_CONNECTION` | `Farolas` | `ru` (consultar y actualizar) | La app lee el catálogo y la directiva reubica farolas (spec 008); añadir llegará con `POST` |
   | `AUDITORIA_CONNECTION` | `Auditoria` | `ra` (consultar y añadir) | Append-only: la app no puede modificar ni borrar la auditoría |
-  | `USUARIOS_CONNECTION` | `Usuarios` | `ru` (consultar y actualizar) | La app solo fija el `sub` en el primer login; altas y bajas no van por la app |
+  | `USUARIOS_CONNECTION` | `Usuarios` | `raud` (consultar, añadir, actualizar y borrar) | La app fija el `sub` en el primer login y la directiva da de alta, cambia el rol y da de baja (spec 009); borrar solo deshace un alta cuya auditoría falló |
   | `INCIDENCIAS_CONNECTION` | `Incidencias` | `rad` (consultar, añadir y borrar) | La app da de alta incidencias; borrar solo para deshacer un alta cuya auditoría falle. El cambio de gestión de estados añadirá actualizar |
 
 - Un SAS de servicio solo vale para su tabla y no crea ni borra tablas. Si `listServiceSas` no devuelve `tn=<tabla>` en el token, el Bicep lo añade.

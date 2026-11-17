@@ -27,11 +27,11 @@ describe('tablas', () => {
     expect(bicep).not.toMatch(/listAccountSas/);
   });
 
-  it('el SAS de Auditoria solo permite añadir y leer, el de Farolas leer y actualizar, el de Usuarios leer y actualizar y el de Incidencias leer, añadir y borrar', () => {
+  it('el SAS de Auditoria solo permite añadir y leer, el de Farolas leer y actualizar, el de Usuarios leer, añadir, actualizar y borrar (009) y el de Incidencias leer, añadir y borrar', () => {
     const permisos = [...bicep.matchAll(/toLower\((tabla\w+)\.name\)\}'\s*signedPermission:\s*'(\w+)'/g)].map(
       (m) => [m[1]!, m[2]!] as const,
     );
-    expect(Object.fromEntries(permisos)).toEqual({ tablaFarolas: 'ru', tablaAuditoria: 'ra', tablaUsuarios: 'ru', tablaIncidencias: 'rad' });
+    expect(Object.fromEntries(permisos)).toEqual({ tablaFarolas: 'ru', tablaAuditoria: 'ra', tablaUsuarios: 'raud', tablaIncidencias: 'rad' });
   });
 
   it('sin app setting falla con un error que no incluye ningún valor', () => {

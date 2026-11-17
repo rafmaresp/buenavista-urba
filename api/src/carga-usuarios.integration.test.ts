@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cargarUsuarios } from './carga-usuarios';
-import { clienteAdmin, clienteConSas, conTablasTemporales, contar, esperarProhibido, hayAzuriteConClave } from './pruebas/azurite';
+import { clienteAdmin, clienteConSas, conTablasTemporales, contar, hayAzuriteConClave } from './pruebas/azurite';
 import { parsearAltas } from './usuarios';
 import { RepositorioUsuarios } from './usuarios-repo';
 
@@ -41,14 +41,5 @@ describe.runIf(hayAzuriteConClave)('alta de usuarios (Azurite)', () => {
     });
   });
 
-  it('con el SAS de la app (ru) no se puede dar de alta', async () => {
-    await conTablasTemporales(['Usuarios', 'Auditoria'], async ([usuarios, auditoria]) => {
-      const repoApp = new RepositorioUsuarios(
-        clienteConSas(usuarios!, { query: true, update: true }),
-        clienteConSas(auditoria!, { add: true, query: true }),
-      );
-      await esperarProhibido(repoApp.crear({ email: 'ana@example.com', rol: 'comunero' }, 'sistema:carga'));
-      expect(await contar(clienteAdmin(auditoria!))).toBe(0);
-    });
-  });
+  // La app ya puede dar de alta (SAS raud, spec 009): lo prueba usuarios.integration.test.ts.
 });
